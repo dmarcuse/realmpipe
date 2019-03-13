@@ -1,0 +1,32 @@
+language: rust
+
+rust: stable
+
+cache: cargo
+
+matrix:
+  include:
+    - os: linux
+      dist: xenial
+      addons:
+        snaps:
+          - name: dmd
+            classic: true
+
+    - os: windows
+      before_install:
+        - choco install dmd -y
+        - export PATH=$PATH:/c/D/dmd2/windows/bin
+
+    - os: osx
+      addons:
+        homebrew:
+          packages:
+            - dmd
+
+script:
+  - cargo build -vv --all
+  - cargo test --all
+
+notifications:
+  email: false
