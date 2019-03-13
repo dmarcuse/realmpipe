@@ -33,12 +33,15 @@ impl From<EnvError> for BuildError {
 }
 
 fn main() -> Result<(), BuildError> {
+    // we don't need to recompile rabcdasm unless the build script changes
+    println!("cargo:rerun-if-changed=build.rs");
+
     // create a temporary directory to build rabcdasm in
     let dir = tempfile::tempdir()?;
     println!("Created temporary directory: {}", dir.as_ref().display());
 
-    // clone the 1.18 version of rabcdasm
-    let respository = Repository::clone("https://github.com/CyberShadow/RABCDAsm.git", &dir)?;
+    // clone rabcdasm
+    Repository::clone("https://github.com/CyberShadow/RABCDAsm.git", &dir)?;
     println!("Successfully cloned repository");
 
     // build the project with dmd
