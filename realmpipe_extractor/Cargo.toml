@@ -1,7 +1,7 @@
 [package]
 name = "realmpipe_extractor"
 version = "0.1.0"
-authors = ["dmarcuse <dominic@marcuse.us>"]
+authors = ["Dominic Marcuse <dominic@marcuse.us>"]
 edition = "2018"
 
 [dependencies]
