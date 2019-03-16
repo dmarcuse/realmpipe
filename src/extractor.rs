@@ -25,7 +25,8 @@ impl Binaries {
         // write the contents of the file
         file.write_all(binary)?;
 
-        if cfg!(unix) {
+        // only need to set executable permission on unix
+        #[cfg(unix)] {
             use std::fs::{metadata, set_permissions};
             use std::os::unix::fs::PermissionsExt;
 
