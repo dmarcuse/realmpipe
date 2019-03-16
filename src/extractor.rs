@@ -1,7 +1,9 @@
-use tempfile::{tempdir, TempDir};
-use std::io::{Read, Write, Result as IoResult};
+//! Utilities to automatically extract updated packet/game object data from the flash ROTMG client
+
 use std::fs::File;
+use std::io::{Read, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
+use tempfile::{tempdir, TempDir};
 
 const ABCEXPORT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/abcexport"));
 const RABCDASM: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rabcdasm"));
@@ -52,6 +54,11 @@ impl Binaries {
         let swfbinexport = Binaries::extract_binary(dir.path(), "swfbinexport", SWFBINEXPORT)?;
 
         // return struct
-        Ok(Binaries { dir, abcexport, rabcdasm, swfbinexport })
+        Ok(Binaries {
+            dir,
+            abcexport,
+            rabcdasm,
+            swfbinexport,
+        })
     }
 }

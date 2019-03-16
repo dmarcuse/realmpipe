@@ -1,4 +1,7 @@
-mod data;
+#![deny(bare_trait_objects)]
+
+mod extractor;
+mod net;
 
 use cursive::Cursive;
 use log::Level;
