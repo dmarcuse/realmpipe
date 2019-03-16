@@ -16,7 +16,7 @@ matrix:
     - os: windows
       before_install:
         - choco install dmd -y
-        - export PATH=$PATH:/c/D/dmd2/windows/bin
+        - refreshenv
 
     - os: osx
       addons:
@@ -25,6 +25,7 @@ matrix:
             - dmd
 
 script:
+  - cargo build -vv
   - cargo test
 
 notifications:
