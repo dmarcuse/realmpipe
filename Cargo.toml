@@ -1,5 +1,16 @@
-[workspace]
-members = [
-    "realmpipe_extractor",
-    "realmpipe"
-]
+[package]
+name = "realmpipe"
+description = "A lightweight and efficient proxy for Realm of the Mad God"
+version = "0.1.0"
+authors = ["Dominic Marcuse <dominic@marcuse.us>"]
+edition = "2018"
+
+[dependencies]
+cursive = { version = "0.11.0", default-features = false, features = [ "pancurses-backend" ] }
+structopt = "0.2.15"
+log = "0.4.6"
+tempfile = "3.0.7"
+
+[build-dependencies]
+git2 = { version = "0.8.0", default-features = false, features = [ "https" ] }
+tempfile = "3.0.7"

@@ -1,3 +1,5 @@
+mod data;
+
 use cursive::Cursive;
 use log::Level;
 use structopt::StructOpt;
