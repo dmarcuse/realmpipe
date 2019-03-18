@@ -1,7 +1,7 @@
 //! Utilities to automatically extract updated packet/game object data from the flash ROTMG client
 
 use std::fs::File;
-use std::io::{Read, Result as IoResult, Write};
+use std::io::{Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use tempfile::{tempdir, TempDir};
 
@@ -26,7 +26,8 @@ impl Binaries {
         file.write_all(binary)?;
 
         // only need to set executable permission on unix
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             use std::fs::{metadata, set_permissions};
             use std::os::unix::fs::PermissionsExt;
 

@@ -10,6 +10,8 @@ cursive = { version = "0.11.0", default-features = false, features = [ "pancurse
 structopt = "0.2.15"
 log = "0.4.6"
 tempfile = "3.0.7"
+bytes = "0.4.12"
+crossbeam-channel = "0.3.8"
 
 [build-dependencies]
 git2 = { version = "0.8.0", default-features = false, features = [ "https" ] }
