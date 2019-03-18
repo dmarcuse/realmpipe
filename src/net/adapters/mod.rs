@@ -2,6 +2,7 @@ mod primitives;
 mod rle;
 
 use self::prelude::*;
+pub use self::rle::{RLEString, RLE};
 use failure::Fail;
 use std::convert::From;
 

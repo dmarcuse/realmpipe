@@ -22,7 +22,7 @@ impl<S, C> RLE<S, C> {
     /// Create a new run length encoded collection from the given collection
     pub fn new(collection: C) -> Self {
         Self {
-            collection: collection,
+            collection,
             phantom: PhantomData::default(),
         }
     }
@@ -51,7 +51,7 @@ where
                 .map(|_| C::Item::get_be(bytes))
                 .collect::<Result<C>>()
                 .map(|collection| Self {
-                    collection: collection,
+                    collection,
                     phantom: PhantomData::default(),
                 })
         } else {
@@ -88,7 +88,9 @@ impl<S, C> Borrow<C> for RLE<S, C> {
     }
 }
 
-struct RLEString<S> {
+/// A wrapper around a `String` which can be converted to or from big endian
+/// bytes by prefixing the data with an integer (of type `S`)
+pub struct RLEString<S> {
     string: String,
     phantom: PhantomData<S>,
 }
