@@ -1,9 +1,12 @@
 //! Definitions and adapters for StatType and StatData
 
+#![allow(missing_docs)]
+
 use crate::net::adapters::prelude::*;
 
 macro_rules! stat_types {
     ($($name:ident = $value:expr),* $(,)?) => {
+        /// The type of a stat specified within `StatData`
         #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
         #[repr(u8)]
         #[allow(non_camel_case_types)]
@@ -122,10 +125,13 @@ stat_types! {
 }
 
 impl StatType {
+    /// Convert this stat type from a byte, returning the matching `StatType`
+    /// if valid or `None` otherwise
     pub fn from_byte(byte: u8) -> Option<Self> {
         Self::VALID_TYPES[byte as usize]
     }
 
+    /// Check whether this stat type is a string stat or an integer stat
     pub fn is_string_stat(self) -> bool {
         match self {
             StatType::NAME_STAT

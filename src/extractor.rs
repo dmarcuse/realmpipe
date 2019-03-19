@@ -20,6 +20,8 @@ lazy_static! {
     static ref RC4_PATTERN: Regex = Regex::new(r#"\s+getlex\s+QName\(PackageNamespace\("com\.hurlant\.crypto"\),\s+"Crypto"\)\s+pushstring\s+"rc4"\s+getlex\s+QName\(PackageNamespace\("com\.company\.util"\),\s+"MoreStringUtil"\)\s+pushstring\s+"(\w+)"\s+pushbyte\s+0\s+pushbyte\s+26"#).unwrap();
 }
 
+/// A utility to extract embedded rabcdasm binaries and generate `Mappings`
+/// from the official game client
 pub struct Extractor {
     _dir: TempDir,
     abcexport: PathBuf,

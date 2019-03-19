@@ -1,4 +1,5 @@
-use realmpipe::*;
+pub mod ui;
+
 use structopt::StructOpt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StructOpt)]

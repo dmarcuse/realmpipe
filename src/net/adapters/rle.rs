@@ -119,6 +119,7 @@ pub struct RLEString<S> {
 }
 
 impl<S> RLEString<S> {
+    /// Create a new run length encoded string wrapping the given string
     pub fn new(string: String) -> Self {
         Self {
             string,
@@ -126,6 +127,7 @@ impl<S> RLEString<S> {
         }
     }
 
+    /// Unwrap the stored string
     pub fn unwrap(self) -> String {
         self.string
     }

@@ -1,3 +1,6 @@
+//! Adapters for encoding and decoding data as bytes for transmission over the
+//! network.
+
 mod primitives;
 mod rle;
 
@@ -17,10 +20,18 @@ pub(in crate) mod prelude {
 pub enum Error {
     /// Insufficient data left in the buffer to decode the given type
     #[fail(
-        display = "Not enough data left in buffer: expected {}, got {}",
+        display = "Not enough data left in buffer: need {} bytes, {} bytes remaining",
         needed, remaining
     )]
-    InsufficientData { remaining: usize, needed: usize },
+    InsufficientData {
+        /// The number of bytes remaining in the buffer
+        remaining: usize,
+
+        /// The number of bytes needed - note that this is not necessarily
+        /// the number of bytes needed to decode the entire object, just part
+        /// of it.
+        needed: usize,
+    },
 
     /// The given data is invalid and cannot be encoded or decoded properly
     #[fail(display = "Invalid data: {}", _0)]
@@ -31,6 +42,7 @@ pub enum Error {
     Other(failure::Error),
 }
 
+/// The result of encoding or decoding data using a `NetworkAdapter`
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// A trait providing functionality for converting a type to or from buffers of

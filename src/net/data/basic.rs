@@ -1,5 +1,7 @@
 //! Definitions and adapters for basic ROTMG data types
 
+#![allow(missing_docs)]
+
 use super::stat::StatData;
 use crate::net::adapters::prelude::*;
 
