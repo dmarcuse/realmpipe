@@ -2,10 +2,9 @@
 //! are preceded by a value indicating the number of items stored.
 
 use super::prelude::*;
-use failure::err_msg;
 use num::{FromPrimitive, ToPrimitive};
 use std::borrow::Borrow;
-use std::fmt::Display;
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::iter::{FromIterator, IntoIterator};
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -55,7 +54,10 @@ where
                     phantom: PhantomData::default(),
                 })
         } else {
-            Err(err_msg(format!("cannot cast length to usize: {}", len)).into())
+            Err(Error::InvalidData(format!(
+                "cannot cast length to usize: {}",
+                len
+            )))
         }
     }
 
@@ -69,7 +71,10 @@ where
             len.put_be(bytes)?;
             iter.try_for_each(|i| i.put_be(bytes))
         } else {
-            Err(err_msg(format!("cannot cast length from usize: {}", iter.len())).into())
+            Err(Error::InvalidData(format!(
+                "cannot cast length from usize: {}",
+                iter.len()
+            )))
         }
     }
 }
@@ -85,6 +90,24 @@ impl<S, C> Deref for RLE<S, C> {
 impl<S, C> Borrow<C> for RLE<S, C> {
     fn borrow(&self) -> &C {
         &self.collection
+    }
+}
+
+impl<S, C: Debug> Debug for RLE<S, C> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "{:?}", self.collection)
+    }
+}
+
+impl<S, S2, C: PartialEq> PartialEq<RLE<S2, C>> for RLE<S, C> {
+    fn eq(&self, other: &RLE<S2, C>) -> bool {
+        self.collection == other.collection
+    }
+}
+
+impl<S, C: Clone> Clone for RLE<S, C> {
+    fn clone(&self) -> Self {
+        Self::new(self.collection.clone())
     }
 }
 
@@ -142,6 +165,24 @@ impl<S> Borrow<String> for RLEString<S> {
     }
 }
 
+impl<S> Debug for RLEString<S> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "{:?}", self.string)
+    }
+}
+
+impl<S, S2> PartialEq<RLEString<S2>> for RLEString<S> {
+    fn eq(&self, other: &RLEString<S2>) -> bool {
+        self.string == other.string
+    }
+}
+
+impl<S> Clone for RLEString<S> {
+    fn clone(&self) -> Self {
+        Self::new(self.string.clone())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,7 +209,7 @@ mod tests {
         let large = (0..300).collect::<Vec<u16>>();
         assert_matches!(
             RLE::<u8, _>::new(large).put_be(&mut buf),
-            Err(Error::Other(_))
+            Err(Error::InvalidData(_))
         );
     }
 
@@ -193,7 +234,7 @@ mod tests {
         let large = "abc".repeat(100);
         assert_matches!(
             RLEString::<u8>::new(large).put_be(&mut buf),
-            Err(Error::Other(_))
+            Err(Error::InvalidData(_))
         )
     }
 }

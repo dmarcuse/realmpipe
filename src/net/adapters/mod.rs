@@ -6,7 +6,8 @@ pub use self::rle::{RLEString, RLE};
 use failure::Fail;
 use std::convert::From;
 
-pub(self) mod prelude {
+pub(in crate) mod prelude {
+    pub use super::rle::{RLEString, RLE};
     pub use super::{Error, NetworkAdapter, Result};
     pub use bytes::{Buf, BufMut};
 }
@@ -20,6 +21,10 @@ pub enum Error {
         needed, remaining
     )]
     InsufficientData { remaining: usize, needed: usize },
+
+    /// The given data is invalid and cannot be encoded or decoded properly
+    #[fail(display = "Invalid data: {}", _0)]
+    InvalidData(String),
 
     /// A different type of error
     #[fail(display = "{}", _0)]
