@@ -1,9 +1,4 @@
-#![deny(bare_trait_objects)]
-
-mod extractor;
-mod net;
-mod ui;
-
+use realmpipe::*;
 use structopt::StructOpt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, StructOpt)]
