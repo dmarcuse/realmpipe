@@ -234,9 +234,7 @@ macro_rules! define_packets {
             };
 
             /// Get the function to use to decode a packet of this type.
-            /// This method is publicly accessible, but you probably want to
-            /// use `Packet::from_bytes` instead, which calls this internally.
-            pub fn get_decoder(self) -> PacketDecoder {
+            fn get_decoder(self) -> PacketDecoder {
                 Self::DECODERS[self as usize].unwrap()
             }
         }
