@@ -126,33 +126,6 @@ macro_rules! define_packets {
             ),*
         }
 
-        // define an enum for internal packet ids...
-        /// A representation of packet types used internally
-        #[repr(u8)]
-        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-        #[allow(missing_docs)]
-        pub enum InternalPacketId {
-            $( // each side
-                $( // each packet
-                    $name
-                ),*
-            ),*
-        }
-
-        // ...and then a method to get the internal id of an existing packet
-        impl Packet {
-            /// Get the internal ID for this packet
-            pub fn get_internal_id(&self) -> InternalPacketId {
-                match self {
-                    $(
-                        $(
-                            Packet::$name(..) => InternalPacketId::$name
-                        ),*
-                    ),*
-                }
-            }
-        }
-
         // next, downcast functionality, achieved with a trait...
         pub trait Downcast<T> {
             fn downcast(self) -> Option<T>;
@@ -207,6 +180,54 @@ macro_rules! define_packets {
             /// ```
             pub fn downcast_ref<'a, T>(&'a self) -> Option<&'a T> where &'a Self: Downcast<&'a T> {
                 Downcast::downcast(self)
+            }
+        }
+
+        // define an enum for internal packet ids...
+        /// A representation of packet types used internally. These must be
+        /// mapped to the game's own packet IDs to be useful.
+        #[repr(u8)]
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+        #[allow(missing_docs)]
+        pub enum InternalPacketId {
+            $( // each side
+                $( // each packet
+                    $name
+                ),*
+            ),*
+        }
+
+        // ...and then methods to convert to/from internal IDs
+        impl Packet {
+            /// Get the internal ID for this packet
+            pub fn get_internal_id(&self) -> InternalPacketId {
+                match self {
+                    $(
+                        $(
+                            Packet::$name(..) => InternalPacketId::$name
+                        ),*
+                    ),*
+                }
+            }
+
+            /// Attempt to decode a packet of a known type from bytes. This
+            /// method should be used once the internal ID for the packet
+            /// type is known and the raw bytes of the packet have been
+            /// received in full and decrypted.
+            ///
+            /// # Arguments
+            /// * `id`: The internal type ID for the given packet
+            /// * `bytes`: The raw, decrypted bytes of the packet, in full
+            // TODO: investigate optimizing this
+            pub fn from_bytes(id: InternalPacketId, bytes: &mut dyn Buf) -> Result<Self> {
+                use InternalPacketId as Id;
+                match id {
+                    $(
+                        $(
+                            Id::$name => $name::get_be(bytes).map(|p| Packet::$name(p))
+                        ),*
+                    ),*
+                }
             }
         }
     };
