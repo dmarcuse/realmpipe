@@ -172,7 +172,7 @@ impl NetworkAdapter for StatData {
     fn get_be(bytes: &mut dyn Buf) -> Result<Self> {
         let stat_type = StatType::get_be(bytes)?;
         if stat_type.is_string_stat() {
-            RLEString::<u16>::get_be(bytes).map(|s| StatData::String(stat_type, s.unwrap()))
+            RLE::<String>::get_be(bytes).map(|s| StatData::String(stat_type, s.unwrap()))
         } else {
             u32::get_be(bytes).map(|i| StatData::Integer(stat_type, i))
         }
@@ -186,7 +186,7 @@ impl NetworkAdapter for StatData {
             }
             StatData::String(t, s) => {
                 t.put_be(bytes)?;
-                RLEString::<u16>::new(s).put_be(bytes)?;
+                RLE::<String>::new(s).put_be(bytes)?;
             }
         }
 

@@ -50,7 +50,7 @@ auto_data! {
     GroundTileData { x: u16, y: u16, tile: u16 },
     MoveRecord { time: u32, x: f32, y: f32 },
     ObjectData { object_type: u16, status: ObjectStatusData },
-    ObjectStatusData { object_id: u32, pos: WorldPosData, stats: RLE<u16, Vec<StatData>> },
+    ObjectStatusData { object_id: u32, pos: WorldPosData, stats: RLE<Vec<StatData>> },
     SlotObjectData { object_id: u32, slot_id: u8, object_type: u32 },
     TradeItem { item: u32, slot_type: u32, tradeable: bool, included: bool },
     WorldPosData { x: f32, y: f32 }

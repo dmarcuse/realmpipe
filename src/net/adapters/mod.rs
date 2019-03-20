@@ -1,17 +1,17 @@
 //! Adapters for encoding and decoding data as bytes for transmission over the
 //! network.
 
+mod complex;
 mod primitives;
 mod rle;
-mod complex;
 
 use self::prelude::*;
-pub use self::rle::{RLEString, RLE};
+pub use self::rle::RLE;
 use failure::Fail;
 use std::convert::From;
 
 pub(in crate) mod prelude {
-    pub use super::rle::{RLEString, RLE};
+    pub use super::rle::RLE;
     pub use super::{Error, NetworkAdapter, Result};
     pub use bytes::{Buf, BufMut};
 }
