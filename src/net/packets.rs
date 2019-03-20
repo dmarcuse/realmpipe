@@ -218,6 +218,8 @@ pub use self::unified_definitions::server;
 pub use self::unified_definitions::InternalPacketId;
 pub use self::unified_definitions::Packet;
 
+mod manual_adapters;
+
 /// Unified set of all packet definitions
 mod unified_definitions {
     use crate::net::adapters::prelude::*;
@@ -385,7 +387,7 @@ mod unified_definitions {
             Notification { object_id: u32, message: RLE<String>, color: u32 },
             PasswordPrompt { clean_password_status: u32 },
             PetYard { typ: u32 },
-            Pic(ManualAdapter) { bitmap_data: Vec<u8> },
+            Pic(ManualAdapter) { w: u32, h: u32, bitmap_data: Vec<u8> },
             Ping { serial: u32 },
             PlaySound { owner_id: u32, sound_id: u8 },
             QuestObjId { object_id: u32 },
