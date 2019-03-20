@@ -197,7 +197,7 @@ macro_rules! define_packets {
             ),*
         }
 
-        // ...and then methods to convert to/from internal IDs
+        // ...and then a method to get the internal ID of a packet
         impl Packet {
             /// Get the internal ID for this packet
             pub fn get_internal_id(&self) -> InternalPacketId {
@@ -209,7 +209,40 @@ macro_rules! define_packets {
                     ),*
                 }
             }
+        }
 
+        // we also need a way to deserialize a packet with a known id
+        // we start with a lookup table...
+        type PacketDecoder = fn(&mut dyn Buf) -> Result<Packet>;
+        impl InternalPacketId {
+            const DECODERS: [Option<PacketDecoder>; 255] = {
+                let mut arr: [Option<PacketDecoder>; 255] = [None; 255];
+
+                $(
+                    $(
+                        arr[InternalPacketId::$name as usize] = Some({
+                            fn decode(bytes: &mut dyn Buf) -> Result<Packet> {
+                                $name::get_be(bytes).map(|p| Packet::$name(p))
+                            }
+
+                            decode
+                        });
+                    )*
+                )*
+
+                arr
+            };
+
+            /// Get the function to use to decode a packet of this type.
+            /// This method is publicly accessible, but you probably want to
+            /// use `Packet::from_bytes` instead, which calls this internally.
+            pub fn get_decoder(self) -> PacketDecoder {
+                Self::DECODERS[self as usize].unwrap()
+            }
+        }
+
+        // ...and then use the lookup table to automatically choose a decoder
+        impl Packet {
             /// Attempt to decode a packet of a known type from bytes. This
             /// method should be used once the internal ID for the packet
             /// type is known and the raw bytes of the packet have been
@@ -218,16 +251,8 @@ macro_rules! define_packets {
             /// # Arguments
             /// * `id`: The internal type ID for the given packet
             /// * `bytes`: The raw, decrypted bytes of the packet, in full
-            // TODO: investigate optimizing this
             pub fn from_bytes(id: InternalPacketId, bytes: &mut dyn Buf) -> Result<Self> {
-                use InternalPacketId as Id;
-                match id {
-                    $(
-                        $(
-                            Id::$name => $name::get_be(bytes).map(|p| Packet::$name(p))
-                        ),*
-                    ),*
-                }
+                id.get_decoder()(bytes)
             }
         }
     };
