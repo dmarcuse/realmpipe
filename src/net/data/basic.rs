@@ -20,19 +20,15 @@ macro_rules! auto_data {
 
         impl NetworkAdapter for $name {
             fn get_be(bytes: &mut dyn Buf) -> Result<Self> {
-                $(
-                    let $fieldname: $fieldtype = NetworkAdapter::get_be(bytes)?;
-                )*
+                $( let $fieldname = NetworkAdapter::get_be(bytes)?; )*
 
                 Ok(Self { $( $fieldname ),* })
             }
 
             fn put_be(self, bytes: &mut dyn BufMut) -> Result<()> {
-                let Self { $($fieldname),* } = self;
+                let Self { $( $fieldname ),* } = self;
 
-                $(
-                    $fieldname.put_be(bytes)?;
-                )*
+                $( $fieldname.put_be(bytes)?; )*
 
                 Ok(())
             }

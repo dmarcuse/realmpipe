@@ -3,6 +3,7 @@
 
 mod primitives;
 mod rle;
+mod complex;
 
 use self::prelude::*;
 pub use self::rle::{RLEString, RLE};

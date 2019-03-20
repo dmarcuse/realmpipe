@@ -113,7 +113,7 @@ impl<S, C: Clone> Clone for RLE<S, C> {
 
 /// A wrapper around a `String` which can be converted to or from big endian
 /// bytes by prefixing the data with an integer (of type `S`)
-pub struct RLEString<S> {
+pub struct RLEString<S = u16> {
     string: String,
     phantom: PhantomData<S>,
 }
