@@ -152,6 +152,63 @@ macro_rules! define_packets {
                 }
             }
         }
+
+        // next, downcast functionality, achieved with a trait...
+        pub trait Downcast<T> {
+            fn downcast(self) -> Option<T>;
+        }
+
+        // ...then impls for each type...
+        $(
+            $(
+                impl Downcast<$name> for Packet {
+                    fn downcast(self) -> Option<$name> {
+                        match self {
+                            Packet::$name(v) => Some(v),
+                            _ => None
+                        }
+                    }
+                }
+
+                impl<'a> Downcast<&'a $name> for &'a Packet {
+                    fn downcast(self) -> Option<&'a $name> {
+                        match self {
+                            Packet::$name(v) => Some(v),
+                            _ => None
+                        }
+                    }
+                }
+            )*
+        )*
+
+        // ...and finally methods on `Packet`.
+        impl Packet {
+            /// Attempt to downcast this packet to a specific type, consuming the packet.
+            /// See `downcast_ref` for an example.
+            pub fn downcast<T>(self) -> Option<T> where Self: Downcast<T> {
+                Downcast::downcast(self)
+            }
+
+            /// Attempt to downcast this packet to a specific type by reference.
+            ///
+            /// # Example
+            ///
+            /// ```
+            /// use realmpipe::net::packets::{Packet, client};
+            ///
+            /// // create a wrapped packet
+            /// let pkt = Packet::CancelTrade(client::CancelTrade {});
+            ///
+            /// // downcast it to its original type (will return Some(T) on success)
+            /// assert_eq!(pkt.downcast_ref::<client::CancelTrade>(), Some(&client::CancelTrade {}));
+            ///
+            /// // downcast it to a different type (will return None on failure)
+            /// assert_eq!(pkt.downcast_ref::<client::AcceptTrade>(), None);
+            /// ```
+            pub fn downcast_ref<'a, T>(&'a self) -> Option<&'a T> where &'a Self: Downcast<&'a T> {
+                Downcast::downcast(self)
+            }
+        }
     };
 }
 
