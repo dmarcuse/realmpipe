@@ -2,14 +2,19 @@
 //! the official flash ROTMG client, using an embedded build of
 //! [rabcdasm](https://github.com/CyberShadow/RABCDAsm).
 
-use crate::mappings::Mappings;
+use crate::mappings::{Error as MappingError, Mappings};
+use crate::net::packets::InternalPacketId;
+use failure_derive::Fail;
 use lazy_static::lazy_static;
-use log::info;
+use log::{debug, info, warn};
 use regex::Regex;
+use std::collections::HashMap;
+use std::convert::From;
 use std::fs::{read_to_string, File};
 use std::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 use tempfile::{tempdir, TempDir};
 
 const ABCEXPORT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/abcexport"));
@@ -18,6 +23,39 @@ const SWFBINEXPORT: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/swfbinexpo
 
 lazy_static! {
     static ref RC4_PATTERN: Regex = Regex::new(r#"\s+getlex\s+QName\(PackageNamespace\("com\.hurlant\.crypto"\),\s+"Crypto"\)\s+pushstring\s+"rc4"\s+getlex\s+QName\(PackageNamespace\("com\.company\.util"\),\s+"MoreStringUtil"\)\s+pushstring\s+"(\w+)"\s+pushbyte\s+0\s+pushbyte\s+26"#).unwrap();
+    static ref PACKET_PATTERN: Regex = Regex::new(r#"trait const QName\(PackageNamespace\(""\), "(\w+)"\) slotid \d+ type QName\(PackageNamespace\(""\), "int"\) value Integer\((\d+)\) end"#).unwrap();
+}
+
+/// An error that occurred while extracting mappings from the game client
+#[derive(Debug, Fail)]
+pub enum Error {
+    /// An IO error
+    #[fail(display = "IO error: {}", _0)]
+    IoError(IoError),
+
+    /// An error converting the data to usable mappings
+    #[fail(display = "Mapping error: {}", _0)]
+    MappingError(MappingError),
+
+    /// An error extracting data from the disassembled game client
+    #[fail(display = "Extraction error: {}", _0)]
+    ExtractionError(String),
+
+    /// Some packets were left unmapped and `strict_packets` was specified.
+    #[fail(display = "Some packets were unmapped - check logs")]
+    UnmappedPackets,
+}
+
+impl From<IoError> for Error {
+    fn from(e: IoError) -> Self {
+        Error::IoError(e)
+    }
+}
+
+impl From<MappingError> for Error {
+    fn from(e: MappingError) -> Self {
+        Error::MappingError(e)
+    }
 }
 
 /// A utility to extract embedded rabcdasm binaries and generate `Mappings`
@@ -125,27 +163,84 @@ impl Extractor {
         }
     }
 
-    /// Extract mappings from the given SWF
-    pub fn extract_mappings(&self, swf: &Path) -> IoResult<Mappings> {
+    /// Extract mappings from the given SWF.
+    ///
+    /// If the `strict_packets` argument is true, an error will be returned
+    /// if any packet IDs (either internal or from the game disassembly) are
+    /// left unmapped. Otherwise, these will simply be ignored. In either case,
+    /// a log message will be written when a packet is left unmapped.
+    pub fn extract_mappings(&self, swf: &Path, strict_packets: bool) -> Result<Mappings, Error> {
         info!("Extracting game mappings from {}", swf.display());
         let abc = self.abcexport(swf)?;
         let code = self.rabcdasm(&abc)?;
 
-        let gsc = read_to_string(
+        // extract RC4 keys
+        let gsc_concrete = read_to_string(
             code.join("kabam/rotmg/messaging/impl/GameServerConnectionConcrete.class.asasm"),
         )?;
 
-        let unified_rc4 = if let Some(matches) = RC4_PATTERN.captures(&gsc) {
+        let unified_rc4 = if let Some(matches) = RC4_PATTERN.captures(&gsc_concrete) {
             matches[1].to_string()
         } else {
-            return Err(IoError::new(IoErrorKind::Other, "could not find RC4 keys"));
+            return Err(Error::ExtractionError(
+                "Could not find RC4 keys".to_string(),
+            ));
         };
         info!("Unified RC4 key: {}", unified_rc4);
 
-        if unified_rc4.len() != 52 {
-            return Err(IoError::new(IoErrorKind::Other, "rc4 key length invalid"));
-        }
+        // extract packet IDs
+        let packets = {
+            let mut any_unmapped = false;
 
-        Ok(Mappings { unified_rc4 })
+            // construct map of names to internal IDs
+            let mut name_to_internal = HashMap::new();
+
+            for (id, name) in InternalPacketId::get_name_mappings() {
+                name_to_internal.insert(name.to_lowercase(), *id);
+            }
+
+            // read contents of GameServerConnection class
+            let gsc = read_to_string(
+                code.join("kabam/rotmg/messaging/impl/GameServerConnection.class.asasm"),
+            )?;
+
+            // construct map for game to internal ids
+            let mut game_to_internal = HashMap::new();
+
+            // check each match
+            for cap in PACKET_PATTERN.captures_iter(&gsc) {
+                let name = cap[1].replace('_', "").to_lowercase();
+                let game_id = u8::from_str(&cap[2]).unwrap();
+
+                if let Some(internal_id) = name_to_internal.remove(&name) {
+                    debug!(
+                        "Found mapping: Internal {:?} <=> game {}/{}",
+                        internal_id, &cap[1], game_id
+                    );
+                    game_to_internal.insert(game_id, internal_id);
+                } else {
+                    warn!(
+                        "No mapping found for game packet {}/{} - skipping!",
+                        name, game_id
+                    );
+                    any_unmapped = true;
+                }
+            }
+
+            if !name_to_internal.is_empty() {
+                for (_, v) in name_to_internal {
+                    warn!("No match found for internal packet {:?} - skipping!", v);
+                    any_unmapped = true;
+                }
+            }
+
+            if any_unmapped && strict_packets {
+                return Err(Error::UnmappedPackets);
+            }
+
+            game_to_internal
+        };
+
+        Ok(Mappings::new(unified_rc4, packets)?)
     }
 }

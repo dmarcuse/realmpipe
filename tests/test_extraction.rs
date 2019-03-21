@@ -20,6 +20,6 @@ fn test_extraction() {
 
     // extract game mappings
     let mappings = extractor
-        .extract_mappings(&swf)
+        .extract_mappings(&swf, true)
         .expect("error extracting mappings");
 }

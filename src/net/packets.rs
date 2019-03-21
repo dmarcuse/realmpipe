@@ -187,7 +187,7 @@ macro_rules! define_packets {
         /// A representation of packet types used internally. These must be
         /// mapped to the game's own packet IDs to be useful.
         #[repr(u8)]
-        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+        #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, Deserialize, Serialize)]
         #[allow(missing_docs)]
         pub enum InternalPacketId {
             $( // each side
@@ -199,7 +199,7 @@ macro_rules! define_packets {
 
         // ...and then a method to get the internal ID of a packet
         impl Packet {
-            /// Get the internal ID for this packet
+            /// Get the internal ID associated with this packet type
             pub fn get_internal_id(&self) -> InternalPacketId {
                 match self {
                     $(
@@ -253,6 +253,42 @@ macro_rules! define_packets {
                 id.get_decoder()(bytes)
             }
         }
+
+        // we also need a way to get the names of the internal IDs so we can
+        // generate mappings from the official game client
+        impl InternalPacketId {
+            pub(crate) fn get_name_mappings() -> &'static HashMap<InternalPacketId, &'static str> {
+                lazy_static! {
+                    static ref NAMES: HashMap<InternalPacketId, &'static str> = {
+                        let mut map = HashMap::new();
+
+                        $(
+                            $(
+                                map.insert(InternalPacketId::$name, stringify!($name));
+                            )*
+                        )*
+
+                        map
+                    };
+                }
+
+                &NAMES
+            }
+
+            /// Get the name of this packet type as it appears in the realmpipe
+            /// source code
+            pub fn get_name(self) -> &'static str {
+                Self::get_name_mappings()[&self]
+            }
+        }
+
+        impl Packet {
+            /// Get the name of the type of this packet as it appears in the
+            /// realmpipe source code
+            pub fn get_name(&self) -> &'static str {
+                self.get_internal_id().get_name()
+            }
+        }
     };
 }
 
@@ -268,6 +304,9 @@ mod manual_adapters;
 mod unified_definitions {
     use crate::net::adapters::prelude::*;
     use crate::net::data::*;
+    use lazy_static::lazy_static;
+    use serde::{Deserialize, Serialize};
+    use std::collections::HashMap;
 
     define_packets! {
         Client {
@@ -277,17 +316,16 @@ mod unified_definitions {
             Buy { object_id: u32, quantity: u32 },
             CancelTrade {},
             ChangeGuildRank { name: RLE<String>, guild_rank: u32 },
-            ChangePetSkin { pet_id: u32, skin_type: u32, currency: u32 },
             ChangeTrade { offer: RLE<Vec<bool>> },
             CheckCredits {},
             ChooseName { name: RLE<String> },
+            ClaimLoginRewardMsg { claim_key: RLE<String>, typ: RLE<String> },
             Create { class_type: u16, skin_type: u16 },
             CreateGuild { name: RLE<String> },
             EditAccountList { account_list_id: u32, add: bool, object_id: u32 },
             EnemyHit { time: u32, bullet_id: u8, target_id: u32, kill: bool },
             EnterArena { currency: u32 },
             Escape {},
-            GoToQuestRoom {},
             GotoAck { time: u32 },
             GroundDamage { time: u32, pos: WorldPosData },
             GuildInvite { name: RLE<String> },
@@ -322,6 +360,8 @@ mod unified_definitions {
                 records: RLE<Vec<MoveRecord>>
             },
             OtherHit { time: u32, bullet_id: u8, object_id: u32, target_id: u32 },
+            PetChangeFormMsg { instance_id: u32, picked_new_pet_type: u32, item: SlotObjectData },
+            PetChangeSkinMsg { pet_id: u32, skin_type: u32, currency: u32 },
             PetUpgradeRequest {
                 pet_trans_type: u8,
                 pid_one: u32,
@@ -340,17 +380,22 @@ mod unified_definitions {
             },
             PlayerText { text: RLE<String> },
             QuestRedeem { quest_id: RLE<String>, item: u32, slots: RLE<Vec<SlotObjectData>> },
+            QuestRoomMsg {},
             Pong { serial: u32, time: u32 },
             RequestTrade { name: RLE<String> },
             ResetDailyQuests {},
             Reskin { skin_id: u32 },
-            ReskinPet { instance_id: u32, picked_new_pet_type: u32, item: SlotObjectData },
             SetCondition { effect: u8, duration: f32 },
             ShootAck { time: u32 },
             SquareHit { time: u32, bullet_id: u8, object_id: u32 },
             Teleport { object_id: u32 },
+            UpdateAck {},
             UseItem { time: u32, slot: SlotObjectData, pos: WorldPosData, use_type: u32 },
-            UsePortal { object_id: u32 }
+            UsePortal { object_id: u32 },
+
+            // TODO: these are blind guesses
+            QuestFetchAsk {},
+            AcceptArenaDeath {},
         },
         Server {
             AccountList {
@@ -358,7 +403,7 @@ mod unified_definitions {
                 account_ids: RLE<Vec<RLE<String>>>,
                 lock_action: u32
             },
-            ActivePet { instance_id: u32 },
+            ActivePetUpdate { instance_id: u32 },
             AllyShoot { bullet_id: u8, owner_id: u32, container_type: u16, angle: f32 },
             Aoe {
                 pos: WorldPosData,
@@ -390,7 +435,7 @@ mod unified_definitions {
                 zombie_type: u32,
                 zombie_id: u32,
             },
-            DeletePetMessage { pet_id: u32 },
+            DeletePet { pet_id: u32 },
             EnemyShoot {
                 bullet_id: u8,
                 owner_id: u32,
@@ -401,17 +446,18 @@ mod unified_definitions {
                 num_shots: Option<u8>,
                 angle_inc: Option<f32>
             },
-            EvolvedPetMessage { pet_id: u32, initial_skin: u32, final_skin: u32 },
+            EvolvePet { pet_id: u32, initial_skin: u32, final_skin: u32 },
             Failure { error_id: u32, error_description: RLE<String> }, // TODO: consts?
             File { filename: RLE<String>, file: RLE<String, u32> }, // TODO: investigate this
             GlobalNotification { notification_type: u32, text: RLE<String> },
             Goto { object_id: u32, pos: WorldPosData },
             GuildResult { success: bool, line_builder_json: RLE<String> },
-            HatchPetMessage { pet_name: RLE<String>, pet_skin: u32, item_type: u32 },
+            HatchPet { pet_name: RLE<String>, pet_skin: u32, item_type: u32 },
             InvResult { result: u32 },
             InvitedToGuild { name: RLE<String>, guild_name: RLE<String> },
             ImminentArenaWave { current_runtime: u32 },
             KeyInfoResponse { name: RLE<String>, description: RLE<String>, creator: RLE<String> },
+            LoginRewardMsg { item_id: u32, quantity: u32, gold: u32 },
             MapInfo { // TODO: double check this, maybe use manual adapter
                 width: u32,
                 height: u32,
@@ -426,17 +472,18 @@ mod unified_definitions {
                 extra_xml: RLE<Vec<RLE<String, u32>>>
             },
             NameResult { success: bool, error_text: RLE<String> },
-            NewAbilityMessage { typ: u32 },
+            NewAbility { typ: u32 },
             NewTick { tick_id: u32, tick_time: u32, statuses: RLE<Vec<ObjectStatusData>> },
             Notification { object_id: u32, message: RLE<String>, color: u32 },
             PasswordPrompt { clean_password_status: u32 },
-            PetYard { typ: u32 },
+            PetYardUpdate { typ: u32 },
             Pic(ManualAdapter) { w: u32, h: u32, bitmap_data: Vec<u8> },
             Ping { serial: u32 },
             PlaySound { owner_id: u32, sound_id: u8 },
             QuestObjId { object_id: u32 },
+            QuestFetchResponse { quests: RLE<Vec<QuestData>>, next_refresh_price: u32 },
             QuestRedeemResponse { ok: bool, message: RLE<String> },
-            RealmHeroesResponse { number_of_realm_heroes: u32 },
+            RealmHeroLeftMsg { number_of_realm_heroes: u32 },
             Reconnect {
                 name: RLE<String>,
                 host: RLE<String>,

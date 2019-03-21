@@ -51,6 +51,17 @@ auto_data! {
     MoveRecord { time: u32, x: f32, y: f32 },
     ObjectData { object_type: u16, status: ObjectStatusData },
     ObjectStatusData { object_id: u32, pos: WorldPosData, stats: RLE<Vec<StatData>> },
+    QuestData {
+        id: RLE<String>,
+        name: RLE<String>,
+        description: RLE<String>,
+        category: u32,
+        requirements: RLE<Vec<u32>>,
+        rewards: RLE<Vec<u32>>,
+        completed: bool,
+        item_of_choice: bool,
+        repeatable: bool
+    },
     SlotObjectData { object_id: u32, slot_id: u8, object_type: u32 },
     TradeItem { item: u32, slot_type: u32, tradeable: bool, included: bool },
     WorldPosData { x: f32, y: f32 }
