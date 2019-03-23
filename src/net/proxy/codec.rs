@@ -1,5 +1,6 @@
 //! A codec to frame and encrypt/decrypt ROTMG packets
 
+use super::raw::RawPacket;
 use crate::mappings::Mappings;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crypto::rc4::Rc4;
@@ -19,19 +20,23 @@ pub struct Codec {
 }
 
 impl Codec {
+    /// Construct a new codec for communicating ith the game client.
     pub fn new_client(mappings: &Mappings) -> Self {
         let (recv_rc4, send_rc4) = mappings.get_ciphers();
         Self { recv_rc4, send_rc4 }
     }
 
+    /// Construct a new client for communicating with the game server.
     pub fn new_server(mappings: &Mappings) -> Self {
         let (send_rc4, recv_rc4) = mappings.get_ciphers();
         Self { recv_rc4, send_rc4 }
     }
 }
 
+/// An error that occurred while receiving a packet
 #[derive(Debug, Fail)]
 pub enum DecodeError {
+    /// An internal IO error
     #[fail(display = "IO error: {}", _0)]
     IoError(IoError),
 }
@@ -43,7 +48,7 @@ impl From<IoError> for DecodeError {
 }
 
 impl Decoder for Codec {
-    type Item = Bytes;
+    type Item = RawPacket;
     type Error = DecodeError;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
@@ -68,7 +73,7 @@ impl Decoder for Codec {
             .process(&buf[4..packet_size + 4], &mut decrypted);
 
         // we have the decrypted packet, yield it
-        Ok(Some(decrypted.into()))
+        Ok(Some(RawPacket::new(decrypted.into())))
     }
 }
 
@@ -79,6 +84,7 @@ pub enum EncodeError {
     #[fail(display = "IO error: {}", _0)]
     IoError(IoError),
 
+    /// The packet was too long to be encoded
     #[fail(display = "Packet was too long ({})", _0)]
     TooLong(usize),
 }
@@ -90,10 +96,13 @@ impl From<IoError> for EncodeError {
 }
 
 impl Encoder for Codec {
-    type Item = Bytes;
+    type Item = RawPacket;
     type Error = EncodeError;
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        // convert the packet back into bytes
+        let item = item.into_bytes();
+
         if let Some(packet_size) = item.len().to_u32() {
             // reserve some space to store the packet
             dst.reserve(4 + (packet_size as usize));

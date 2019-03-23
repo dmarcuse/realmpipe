@@ -1,6 +1,7 @@
 //! The actual proxy implementation
 
-mod codec;
+pub mod codec;
+pub mod raw;
 
 use std::net::SocketAddr;
 use tokio::prelude::*;

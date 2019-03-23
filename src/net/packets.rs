@@ -248,9 +248,44 @@ macro_rules! define_packets {
             ///
             /// # Arguments
             /// * `id`: The internal type ID for the given packet
-            /// * `bytes`: The raw, decrypted bytes of the packet, in full
-            pub fn from_bytes(id: InternalPacketId, bytes: &mut dyn Buf) -> Result<Self> {
+            /// * `bytes`: The raw, decrypted content of the packet, in full
+            pub(crate) fn from_bytes(id: InternalPacketId, bytes: &mut dyn Buf) -> Result<Self> {
                 id.get_decoder()(bytes)
+            }
+        }
+
+        // likewise, we need a way to serialize a packet
+        type PacketEncoder = fn(Packet, &mut dyn BufMut) -> Result<()>;
+        impl InternalPacketId {
+            const ENCODERS: [Option<PacketEncoder>; 255] = {
+                let mut arr: [Option<PacketEncoder>; 255] = [None; 255];
+
+                $(
+                    $(
+                        arr[InternalPacketId::$name as usize] = Some({
+                            fn encode(packet: Packet, buf: &mut dyn BufMut) -> Result<()> {
+                                let concrete: $name = packet.downcast().unwrap();
+                                concrete.put_be(buf)
+                            }
+
+                            encode
+                        });
+                    )*
+                )*
+
+                arr
+            };
+
+            fn get_encoder(self) -> PacketEncoder {
+                Self::ENCODERS[self as usize].unwrap()
+            }
+        }
+
+        impl Packet {
+            /// Attempt to encode the decrypted contents of this packet into the
+            /// given buffer.
+            pub(crate) fn to_bytes(self, buf: &mut dyn BufMut) -> Result<()> {
+                self.get_internal_id().get_encoder()(self, buf)
             }
         }
 
