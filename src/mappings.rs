@@ -1,6 +1,7 @@
 //! Mappings for game IDs, objects, etc
 
 use crate::net::packets::InternalPacketId;
+use bimap::BiHashMap;
 use crypto::rc4::Rc4;
 use failure_derive::Fail;
 use serde::{Deserialize, Serialize};
@@ -17,11 +18,8 @@ pub struct Mappings {
     /// The unified RC4 key for network communication
     binary_rc4: [u8; RC4_LEN],
 
-    /// Map of game packet IDs to internal packet IDs
-    game_packet_ids: HashMap<u8, InternalPacketId>,
-
-    /// Map of internal packet IDs to game packet IDs
-    internal_packet_ids: HashMap<InternalPacketId, u8>,
+    /// The mappings between game packet IDs and internal packet IDs
+    packet_mappings: BiHashMap<u8, InternalPacketId>,
 }
 
 /// An error constructing mappings
@@ -30,10 +28,6 @@ pub enum Error {
     /// Caused by an invalid RC4 key
     #[fail(display = "RC4 key is invalid: {}", _0)]
     InvalidRC4Key(String),
-
-    /// Caused by packet mappings that are not strictly one-to-one
-    #[fail(display = "Invalid packet mappings: {}", _0)]
-    InvalidPacketMappings(String),
 }
 
 /// A result wrapping either successfully constructed mappings, or an error
@@ -41,7 +35,12 @@ pub type Result = StdResult<Mappings, Error>;
 
 impl Mappings {
     /// Create a new set of mappings
-    pub fn new(hex_rc4: String, game_packet_ids: HashMap<u8, InternalPacketId>) -> Result {
+    ///
+    /// # Arguments
+    /// `hex_rc4` - the hex-encoded RC4 key to use to encrypt/decrypt packets
+    /// `packet_mappings` - bidirectional mappings between game packet IDs and
+    /// internal packet IDs.
+    pub fn new(hex_rc4: String, packet_mappings: BiHashMap<u8, InternalPacketId>) -> Result {
         // convert and validate RC4 key
         let binary_rc4 = match hex::decode(&hex_rc4) {
             Err(e) => return Err(Error::InvalidRC4Key(hex_rc4)),
@@ -53,39 +52,25 @@ impl Mappings {
             }
         };
 
-        // convert packet ids
-        let mut internal_packet_ids = HashMap::with_capacity(game_packet_ids.len());
-
-        for (game_id, internal_id) in &game_packet_ids {
-            if let Some(old) = internal_packet_ids.insert(*internal_id, *game_id) {
-                // error - packets must be mapped as a one-to-one correspondence!
-                let name = internal_id.get_name();
-                let msg = format!(
-                    "Duplicate packet mapping for {}: {} and {}",
-                    name, old, game_id
-                );
-
-                return Err(Error::InvalidPacketMappings(msg));
-            }
-        }
-
-        Ok(Mappings {
+        Ok(Self {
             binary_rc4,
-            game_packet_ids,
-            internal_packet_ids,
+            packet_mappings,
         })
     }
 
-    /// Map a game packet ID to an internal packet ID
-    pub fn get_internal_id(&self, game_id: u8) -> Option<InternalPacketId> {
-        self.game_packet_ids.get(&game_id).map(|i| i.clone())
+    /// Get the complete mapping table for packet IDs
+    pub fn get_packet_mappings(&self) -> &BiHashMap<u8, InternalPacketId> {
+        &self.packet_mappings
     }
 
-    /// Map an internal packet ID to a game packet ID
+    /// Map a game packet ID to an internal packet ID, if one is present
+    pub fn get_internal_id(&self, game_id: u8) -> Option<InternalPacketId> {
+        self.packet_mappings.get_by_left(&game_id).map(|&i| i)
+    }
+
+    /// Map an internal packet ID to a game packet ID, if one is present
     pub fn get_game_id(&self, internal_id: InternalPacketId) -> Option<u8> {
-        self.internal_packet_ids
-            .get(&internal_id)
-            .map(|i| i.clone())
+        self.packet_mappings.get_by_right(&internal_id).map(|&i| i)
     }
 
     /// Get the two RC4 ciphers

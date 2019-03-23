@@ -4,6 +4,7 @@
 
 use crate::mappings::{Error as MappingError, Mappings};
 use crate::net::packets::InternalPacketId;
+use bimap::{BiHashMap, Overwritten};
 use failure_derive::Fail;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
@@ -205,23 +206,23 @@ impl Extractor {
             )?;
 
             // construct map for game to internal ids
-            let mut game_to_internal = HashMap::new();
+            let mut packet_mappings = BiHashMap::new();
 
-            // check each match
             for cap in PACKET_PATTERN.captures_iter(&gsc) {
                 let name = cap[1].replace('_', "").to_lowercase();
                 let game_id = u8::from_str(&cap[2]).unwrap();
 
                 if let Some(internal_id) = name_to_internal.remove(&name) {
                     debug!(
-                        "Found mapping: Internal {:?} <=> game {}/{}",
+                        "Packet mapped: {:?} <> {}/{}",
                         internal_id, &cap[1], game_id
                     );
-                    game_to_internal.insert(game_id, internal_id);
+                    let overwritten = packet_mappings.insert(game_id, internal_id);
+                    debug_assert_eq!(overwritten, Overwritten::Neither);
                 } else {
                     warn!(
-                        "No mapping found for game packet {}/{} - skipping!",
-                        name, game_id
+                        "No mapping found for packet {}/{} - skipping!",
+                        &cap[1], game_id
                     );
                     any_unmapped = true;
                 }
@@ -238,7 +239,7 @@ impl Extractor {
                 return Err(Error::UnmappedPackets);
             }
 
-            game_to_internal
+            packet_mappings
         };
 
         Ok(Mappings::new(unified_rc4, packets)?)
