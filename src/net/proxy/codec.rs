@@ -1,3 +1,5 @@
+//! A codec to frame and encrypt/decrypt ROTMG packets
+
 use crate::mappings::Mappings;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use crypto::rc4::Rc4;
@@ -9,29 +11,22 @@ use std::io::{Cursor, Error as IoError};
 use std::sync::Arc;
 use tokio::codec::{Decoder, Encoder};
 
+/// The codec for framing and encrypting/decrypting ROTMG packets. This struct
+/// stores the RC4 cipher states for the sending and receiving functionality.
 pub struct Codec {
     recv_rc4: Rc4,
     send_rc4: Rc4,
-    mappings: Arc<Mappings>,
 }
 
 impl Codec {
-    pub fn new_client(mappings: Arc<Mappings>) -> Self {
+    pub fn new_client(mappings: &Mappings) -> Self {
         let (recv_rc4, send_rc4) = mappings.get_ciphers();
-        Self {
-            recv_rc4,
-            send_rc4,
-            mappings,
-        }
+        Self { recv_rc4, send_rc4 }
     }
 
-    pub fn new_server(mappings: Arc<Mappings>) -> Self {
+    pub fn new_server(mappings: &Mappings) -> Self {
         let (send_rc4, recv_rc4) = mappings.get_ciphers();
-        Self {
-            recv_rc4,
-            send_rc4,
-            mappings,
-        }
+        Self { recv_rc4, send_rc4 }
     }
 }
 
@@ -77,8 +72,10 @@ impl Decoder for Codec {
     }
 }
 
+/// An error that occurred while writing a packet
 #[derive(Debug, Fail)]
 pub enum EncodeError {
+    /// A low level IO error
     #[fail(display = "IO error: {}", _0)]
     IoError(IoError),
 
