@@ -19,6 +19,24 @@ pub struct Codec {
     send_rc4: Rc4,
 }
 
+/// An error that occurred while writing a packet
+#[derive(Debug, Fail)]
+pub enum CodecError {
+    /// A low level IO error
+    #[fail(display = "IO error: {}", _0)]
+    IoError(IoError),
+
+    /// The packet was too long to be encoded
+    #[fail(display = "Packet was too long ({})", _0)]
+    TooLong(usize),
+}
+
+impl From<IoError> for CodecError {
+    fn from(e: IoError) -> Self {
+        CodecError::IoError(e)
+    }
+}
+
 impl Codec {
     /// Construct a new codec for communicating ith the game client.
     pub fn new_client(mappings: &Mappings) -> Self {
@@ -33,23 +51,9 @@ impl Codec {
     }
 }
 
-/// An error that occurred while receiving a packet
-#[derive(Debug, Fail)]
-pub enum DecodeError {
-    /// An internal IO error
-    #[fail(display = "IO error: {}", _0)]
-    IoError(IoError),
-}
-
-impl From<IoError> for DecodeError {
-    fn from(e: IoError) -> Self {
-        DecodeError::IoError(e)
-    }
-}
-
 impl Decoder for Codec {
     type Item = RawPacket;
-    type Error = DecodeError;
+    type Error = CodecError;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if buf.len() < 4 {
@@ -77,27 +81,9 @@ impl Decoder for Codec {
     }
 }
 
-/// An error that occurred while writing a packet
-#[derive(Debug, Fail)]
-pub enum EncodeError {
-    /// A low level IO error
-    #[fail(display = "IO error: {}", _0)]
-    IoError(IoError),
-
-    /// The packet was too long to be encoded
-    #[fail(display = "Packet was too long ({})", _0)]
-    TooLong(usize),
-}
-
-impl From<IoError> for EncodeError {
-    fn from(e: IoError) -> Self {
-        EncodeError::IoError(e)
-    }
-}
-
 impl Encoder for Codec {
     type Item = RawPacket;
-    type Error = EncodeError;
+    type Error = CodecError;
 
     fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         // convert the packet back into bytes
@@ -119,7 +105,7 @@ impl Encoder for Codec {
 
             Ok(())
         } else {
-            Err(EncodeError::TooLong(item.len()))
+            Err(CodecError::TooLong(item.len()))
         }
     }
 }

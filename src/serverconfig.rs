@@ -46,4 +46,9 @@ impl ServerList {
             selected_server: default,
         }
     }
+
+    /// Get the address of the currently selected server
+    pub fn get_selected_address(&self) -> &IpAddr {
+        &self.servers[&self.selected_server]
+    }
 }
