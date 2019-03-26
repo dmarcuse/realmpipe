@@ -4,8 +4,8 @@ use crate::net::packets::InternalPacketId;
 use bimap::BiHashMap;
 use crypto::rc4::Rc4;
 use failure_derive::Fail;
+use hex::FromHexError;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::result::Result as StdResult;
 
 /// The required length for the binary RC4 keys
@@ -25,9 +25,13 @@ pub struct Mappings {
 /// An error constructing mappings
 #[derive(Debug, Clone, Fail)]
 pub enum Error {
-    /// Caused by an invalid RC4 key
-    #[fail(display = "RC4 key is invalid: {}", _0)]
-    InvalidRC4Key(String),
+    /// Caused by an invalid RC4 key length
+    #[fail(display = "Invalid RC4 key length: {} for key {}", _1, _0)]
+    InvalidRC4Len(String, usize),
+
+    /// Caused by an RC4 key with invalid hex
+    #[fail(display = "Invalid RC4 key hex: {} for key {}", _1, _0)]
+    InvalidRC4Hex(String, FromHexError),
 }
 
 /// A result wrapping either successfully constructed mappings, or an error
@@ -43,8 +47,8 @@ impl Mappings {
     pub fn new(hex_rc4: String, packet_mappings: BiHashMap<u8, InternalPacketId>) -> Result {
         // convert and validate RC4 key
         let binary_rc4 = match hex::decode(&hex_rc4) {
-            Err(e) => return Err(Error::InvalidRC4Key(hex_rc4)),
-            Ok(ref b) if b.len() != RC4_LEN => return Err(Error::InvalidRC4Key(hex_rc4)),
+            Err(e) => return Err(Error::InvalidRC4Hex(hex_rc4, e)),
+            Ok(ref b) if b.len() != RC4_LEN => return Err(Error::InvalidRC4Len(hex_rc4, b.len())),
             Ok(b) => {
                 let mut arr = [0u8; RC4_LEN];
                 arr.copy_from_slice(&b);

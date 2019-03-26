@@ -57,7 +57,7 @@ impl TcpStreamExt for TcpStream {
 mod tests {
     use super::*;
     use futures::Stream;
-    use std::net::{SocketAddr, SocketAddrV4};
+    use std::net::SocketAddr;
     use std::str::FromStr;
     use tokio::io::write_all;
     use tokio::net::TcpListener;

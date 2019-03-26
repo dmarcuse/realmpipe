@@ -2,19 +2,17 @@
 //! incoming game connections, then logging all packets received.
 
 use std::fs::write;
-use std::io::Result as IoResult;
 use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use log::{debug, error, info, warn};
+use log::{error, info};
 use tempfile::tempdir;
 use tokio::prelude::*;
 
 use realmpipe::extractor::Extractor;
 use realmpipe::mappings::Mappings;
 use realmpipe::net::proxy::{client_listener, server_connection};
-use realmpipe::serverconfig::{get_servers, ServerList};
 
 fn extract_mappings() -> Mappings {
     // create a temp dir
