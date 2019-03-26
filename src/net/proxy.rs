@@ -1,10 +1,13 @@
 //! The actual proxy implementation
 
 pub mod codec;
+mod policy;
 pub mod raw;
 
 use crate::mappings::Mappings;
 use crate::net::proxy::codec::Codec;
+use crate::net::proxy::policy::handle_policy_request;
+use std::convert::identity;
 use std::io::{Error as IoError, Result as IoResult};
 use std::net::SocketAddr;
 use tokio::codec::{Decoder, Framed};
@@ -28,6 +31,8 @@ pub fn client_listener(
     let stream = TcpListener::bind(address)?
         .incoming()
         .and_then(configure_stream)
+        .and_then(handle_policy_request)
+        .filter_map(identity)
         .map(move |s| Codec::new_client(mappings.as_ref()).framed(s));
 
     Ok(stream)

@@ -37,7 +37,7 @@ fn extract_mappings() -> Mappings {
 }
 
 fn main() {
-    simple_logger::init().expect("error initializing logger");
+    simple_logger::init_with_level(log::Level::Debug).expect("error initializing logger");
 
     info!("extracting game mappings");
     let mappings = Arc::new(extract_mappings());
