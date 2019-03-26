@@ -1,7 +1,9 @@
-//! Types and functions to handle ROTMG servers. A `ServerList`, used to map
-//! server names and abbreviations to IP addresses, can be retrieved from the
-//! official game site, or can be constructed manually. Thie list can then be
-//! used to get IP or socket addresses for each server.
+//! Types and functions to handle ROTMG servers.
+//!
+//! A `ServerList`, used to map server names and abbreviations to IP addresses,
+//! can be retrieved from the official game site, or can be constructed
+//! manually. Thie list can then be used to get IP or socket addresses for each
+//! server.
 
 use std::collections::HashMap;
 use std::hash::Hash;
