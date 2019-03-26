@@ -56,26 +56,40 @@ impl Decoder for Codec {
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if buf.len() < 4 {
-            // we don't have enough bytes to even know the packet size
+            // we need more bytes to determine the packet size
             return Ok(None);
         }
 
+        // get the total length of the packet
         let packet_size = {
             let mut cursor = Cursor::new(&buf);
             cursor.get_u32_be() as usize
         };
 
+        // todo: turn this into a CodecError?
+        debug_assert!(packet_size >= 5, "invalid packet size: {}", packet_size);
+
+        // we haven't received the full packet yet
         if buf.len() < packet_size {
-            // we haven't received the full packet yet
             return Ok(None);
         }
 
-        // extract the encrypted packet
-        let mut decrypted = vec![0u8; packet_size - 4];
-        self.recv_rc4.process(&buf[4..packet_size], &mut decrypted);
+        // full packet has been received
+        // remove the entire packet from the buffer
+        let packet = buf.split_to(packet_size);
+
+        // extract the packet contents
+        // first allocate enough memory
+        let mut payload = vec![0u8; packet_size - 4];
+
+        // then extract the ID - it doesn't need to be decrypted
+        payload[0] = packet[4];
+
+        // finally decrypt the contents of the packet
+        self.recv_rc4.process(&packet[5..], &mut payload[1..]);
 
         // we have the decrypted packet, yield it
-        Ok(Some(RawPacket::new(decrypted.into())))
+        Ok(Some(RawPacket::new(payload.into())))
     }
 }
 
@@ -83,27 +97,29 @@ impl Encoder for Codec {
     type Item = RawPacket;
     type Error = CodecError;
 
-    fn encode(&mut self, item: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, packet: Self::Item, dst: &mut BytesMut) -> Result<(), Self::Error> {
         // convert the packet back into bytes
-        let item = item.into_bytes();
+        let packet = packet.into_bytes();
 
-        if let Some(payload_size) = item.len().to_u32() {
+        if let Some(payload_size) = packet.len().to_u32() {
+            let packet_size = payload_size + 4;
+
             // reserve some space to store the packet
-            dst.reserve(4 + (payload_size as usize));
+            dst.reserve(packet_size as usize);
 
-            // write the packet length
-            dst.put_u32_be(payload_size + 4);
+            // write the packet length and ID
+            dst.put_u32_be(packet_size);
+            dst.put_u8(packet[0]);
 
             // encrypt the packet contents
-            let mut encrypted = vec![0u8; payload_size as usize];
-            self.send_rc4.process(&item, &mut encrypted);
+            let mut encrypted = vec![0u8; (payload_size - 1) as usize];
+            self.send_rc4.process(&packet[1..], &mut encrypted[..]);
 
             // write the packet contents
-            dst.extend_from_slice(&encrypted);
-
+            dst.extend_from_slice(&encrypted[..]);
             Ok(())
         } else {
-            Err(CodecError::TooLong(item.len()))
+            Err(CodecError::TooLong(packet.len() + 4))
         }
     }
 }

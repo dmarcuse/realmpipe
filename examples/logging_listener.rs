@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use tempfile::tempdir;
 use tokio::prelude::*;
 
@@ -39,52 +39,75 @@ fn extract_mappings() -> Mappings {
 fn main() {
     simple_logger::init_with_level(log::Level::Debug).expect("error initializing logger");
 
-    info!("extracting game mappings");
+    info!("Extracting game mappings");
     let mappings = Arc::new(extract_mappings());
-    let mappings2 = mappings.clone();
 
-    let localhost = SocketAddr::from_str("127.0.0.1:2050").unwrap();
-    info!("starting listener on {:?}", &localhost);
+    // the local address to listen on
+    let local_addr = SocketAddr::from_str("127.0.0.1:2050").unwrap();
 
-    let selected = SocketAddr::from_str("52.23.232.42:2050").unwrap();
+    // the remote address to connect to
+    // at the time of writing, this is USEast
+    let remote_addr = SocketAddr::from_str("52.23.232.42:2050").unwrap();
 
+    info!("starting listener on {:?}", &local_addr);
     tokio::run(
-        client_listener(&localhost, mappings.clone())
+        client_listener(&local_addr, mappings.clone())
             .unwrap()
+            .map_err(|e| panic!("unexpected error: {}", e))
             .and_then(move |client| {
                 info!(
-                    "incoming connection from {}",
-                    client.get_ref().peer_addr().unwrap()
-                );
-                server_connection(&selected, mappings2.clone()).map(|server| (client, server))
-            })
-            .for_each(|(client, server)| -> IoResult<()> {
-                info!(
-                    "connected to server at {} and client at {}",
-                    server.get_ref().peer_addr().unwrap(),
+                    "Accepted connection from {}",
                     client.get_ref().peer_addr().unwrap()
                 );
 
+                server_connection(&remote_addr, mappings.clone())
+                    .map(|server| (client, server))
+                    .inspect(|(client, server)| {
+                        info!(
+                            "Proxied connection between {} and {} established",
+                            client.get_ref().peer_addr().unwrap(),
+                            server.get_ref().peer_addr().unwrap()
+                        )
+                    })
+            })
+            .map_err(|e| {
+                error!("connection error: {}", e);
+            })
+            .for_each(|(client, server)| {
                 let (client_sink, client_stream) = client.split();
                 let (server_sink, server_stream) = server.split();
 
                 let client_fwd = client_stream
-                    .inspect(|p| info!("client -> server: id {}", p.game_id()))
+                    .inspect(|raw| {
+                        info!(
+                            "Raw client pkt id {} len {}",
+                            raw.game_id(),
+                            raw.contents().len()
+                        );
+                    })
                     .forward(server_sink)
-                    .map_err(|e| error!("client -> server: {:?}", e))
+                    .map_err(|e| {
+                        error!("client pkt error: {}", e);
+                    })
                     .map(|_| ());
 
                 let server_fwd = server_stream
-                    .inspect(|p| info!("server -> client: id {}", p.game_id()))
+                    .inspect(|raw| {
+                        info!(
+                            "Raw server pkt id {} len {}",
+                            raw.game_id(),
+                            raw.contents().len()
+                        );
+                    })
                     .forward(client_sink)
-                    .map_err(|e| error!("server -> client: {:?}", e))
+                    .map_err(|e| {
+                        error!("server pkt error: {}", e);
+                    })
                     .map(|_| ());
 
                 tokio::spawn(client_fwd);
                 tokio::spawn(server_fwd);
-
                 Ok(())
-            })
-            .map_err(|e| panic!("unexpected error: {}", e)),
+            }),
     );
 }
