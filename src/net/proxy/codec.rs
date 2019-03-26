@@ -2,14 +2,13 @@
 
 use super::raw::RawPacket;
 use crate::mappings::Mappings;
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::{Buf, BufMut, BytesMut};
 use crypto::rc4::Rc4;
 use crypto::symmetriccipher::SynchronousStreamCipher;
 use failure_derive::Fail;
 use num::ToPrimitive;
 use std::convert::From;
 use std::io::{Cursor, Error as IoError};
-use std::sync::Arc;
 use tokio::codec::{Decoder, Encoder};
 
 /// The codec for framing and encrypting/decrypting ROTMG packets. This struct
@@ -66,15 +65,14 @@ impl Decoder for Codec {
             cursor.get_u32_be() as usize
         };
 
-        if buf.len() < 4 + packet_size {
+        if buf.len() < packet_size {
             // we haven't received the full packet yet
             return Ok(None);
         }
 
         // extract the encrypted packet
-        let mut decrypted = vec![0u8; packet_size];
-        self.recv_rc4
-            .process(&buf[4..packet_size + 4], &mut decrypted);
+        let mut decrypted = vec![0u8; packet_size - 4];
+        self.recv_rc4.process(&buf[4..packet_size], &mut decrypted);
 
         // we have the decrypted packet, yield it
         Ok(Some(RawPacket::new(decrypted.into())))
@@ -89,15 +87,15 @@ impl Encoder for Codec {
         // convert the packet back into bytes
         let item = item.into_bytes();
 
-        if let Some(packet_size) = item.len().to_u32() {
+        if let Some(payload_size) = item.len().to_u32() {
             // reserve some space to store the packet
-            dst.reserve(4 + (packet_size as usize));
+            dst.reserve(4 + (payload_size as usize));
 
             // write the packet length
-            dst.put_u32_be(packet_size);
+            dst.put_u32_be(payload_size + 4);
 
             // encrypt the packet contents
-            let mut encrypted = vec![0u8; packet_size as usize];
+            let mut encrypted = vec![0u8; payload_size as usize];
             self.send_rc4.process(&item, &mut encrypted);
 
             // write the packet contents
