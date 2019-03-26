@@ -9,4 +9,4 @@ mod ext;
 pub mod extractor;
 pub mod mappings;
 pub mod net;
-pub mod serverconfig;
+pub mod serverlist;
