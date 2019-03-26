@@ -39,6 +39,7 @@ hex = "0.3"
 bimap = { version = "0.3", features = [ "serde" ] }
 reqwest = "0.9"
 serde-xml-rs = "0.3"
+futures = "0.1"
 
 [dev-dependencies]
 simple_logger = "1.0"
