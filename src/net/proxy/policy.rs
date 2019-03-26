@@ -48,11 +48,7 @@ pub fn handle_policy_request(
                 trace!("Potential policy file request: {:?}", bytes);
 
                 // this may be a policy file request, but we need more bytes
-                Box::new(
-                    stream
-                        .peek_max(POLICY_REQUEST.len())
-                        .map(|s| Loop::Continue(s)),
-                )
+                Box::new(stream.peek_max(POLICY_REQUEST.len()).map(Loop::Continue))
             } else {
                 trace!("Not a policy file request: {:?}", bytes);
 

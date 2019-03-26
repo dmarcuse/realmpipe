@@ -69,12 +69,12 @@ impl Mappings {
 
     /// Map a game packet ID to an internal packet ID, if one is present
     pub fn get_internal_id(&self, game_id: u8) -> Option<InternalPacketId> {
-        self.packet_mappings.get_by_left(&game_id).map(|&i| i)
+        self.packet_mappings.get_by_left(&game_id).cloned()
     }
 
     /// Map an internal packet ID to a game packet ID, if one is present
     pub fn get_game_id(&self, internal_id: InternalPacketId) -> Option<u8> {
-        self.packet_mappings.get_by_right(&internal_id).map(|&i| i)
+        self.packet_mappings.get_by_right(&internal_id).cloned()
     }
 
     /// Get the two RC4 ciphers

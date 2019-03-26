@@ -9,7 +9,7 @@ impl<T: NetworkAdapter> NetworkAdapter for Option<T> {
         if bytes.remaining() == 0 {
             Ok(None)
         } else {
-            NetworkAdapter::get_be(bytes).map(|v| Some(v))
+            NetworkAdapter::get_be(bytes).map(Some)
         }
     }
 

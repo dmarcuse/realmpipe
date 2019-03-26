@@ -36,7 +36,7 @@ auto_adapters! {
 
 impl NetworkAdapter for f32 {
     fn get_be(bytes: &mut dyn Buf) -> Result<Self> {
-        u32::get_be(bytes).map(|i| Self::from_bits(i))
+        u32::get_be(bytes).map(Self::from_bits)
     }
 
     fn put_be(self, bytes: &mut dyn BufMut) -> Result<()> {
@@ -46,7 +46,7 @@ impl NetworkAdapter for f32 {
 
 impl NetworkAdapter for f64 {
     fn get_be(bytes: &mut dyn Buf) -> Result<Self> {
-        u64::get_be(bytes).map(|i| Self::from_bits(i))
+        u64::get_be(bytes).map(Self::from_bits)
     }
 
     fn put_be(self, bytes: &mut dyn BufMut) -> Result<()> {

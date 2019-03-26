@@ -45,7 +45,7 @@ impl RawPacket {
     /// buffer is the game's packet ID, and the remaining bytes are the
     /// decrypted contents of the packet.
     pub(crate) fn new(bytes: Bytes) -> RawPacket {
-        debug_assert!(bytes.len() >= 1, "cannot have packet without ID");
+        debug_assert!(!bytes.is_empty(), "cannot have packet without ID");
         Self { bytes }
     }
 
@@ -70,8 +70,7 @@ impl RawPacket {
         let game_id = self.game_id();
 
         if let Some(id) = mappings.get_internal_id(game_id) {
-            Packet::from_bytes(id, &mut self.contents().into_buf())
-                .map_err(|e| Error::AdapterError(e))
+            Packet::from_bytes(id, &mut self.contents().into_buf()).map_err(Error::AdapterError)
         } else {
             Err(Error::UnmappedGameId(game_id))
         }
@@ -85,9 +84,7 @@ impl RawPacket {
         if let Some(game_id) = mappings.get_game_id(internal_id) {
             let mut buf = vec![];
             buf.push(game_id);
-            packet
-                .to_bytes(&mut buf)
-                .map_err(|e| Error::AdapterError(e))?;
+            packet.to_bytes(&mut buf).map_err(Error::AdapterError)?;
             Ok(Self::new(buf.into()))
         } else {
             Err(Error::UnmappedInternalId(internal_id))

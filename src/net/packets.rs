@@ -222,7 +222,7 @@ macro_rules! define_packets {
                     $(
                         arr[InternalPacketId::$name as usize] = Some({
                             fn decode(bytes: &mut dyn Buf) -> Result<Packet> {
-                                $name::get_be(bytes).map(|p| Packet::$name(p))
+                                $name::get_be(bytes).map(Packet::$name)
                             }
 
                             decode
