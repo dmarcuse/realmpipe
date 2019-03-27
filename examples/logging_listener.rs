@@ -27,7 +27,7 @@ fn extract_mappings() -> Mappings {
     .expect("error extracting client SWF");
 
     // extract game mappings
-    let extractor = Extractor::extract().expect("error extracting binaries");
+    let extractor = Extractor::unpack().expect("error extracting binaries");
 
     extractor
         .extract_mappings(&swf, false)

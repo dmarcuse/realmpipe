@@ -1,4 +1,4 @@
-//! The actual proxy implementation
+//! The actual implementation of the proxy server.
 
 pub mod codec;
 mod policy;

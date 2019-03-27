@@ -1,6 +1,9 @@
 //! Utilities to automatically extract updated packet/game object data from
-//! the official flash ROTMG client, using an embedded build of
-//! [rabcdasm](https://github.com/CyberShadow/RABCDAsm).
+//! the official flash ROTMG client.
+//!
+//! An embedded build of [rabcdasm](https://github.com/CyberShadow/RABCDAsm) is
+//! used to disassemble the game client, and the output is then parsed to
+//! generate mappings.
 
 use crate::mappings::{Error as MappingError, Mappings};
 use crate::packets::InternalPacketId;
@@ -69,7 +72,7 @@ pub struct Extractor {
 }
 
 impl Extractor {
-    fn extract_binary(dir: &Path, name: &str, binary: &[u8]) -> IoResult<PathBuf> {
+    fn unpack_binary(dir: &Path, name: &str, binary: &[u8]) -> IoResult<PathBuf> {
         // create the file
         let path = PathBuf::from(dir).join(name);
         let mut file = File::create(&path)?;
@@ -99,14 +102,14 @@ impl Extractor {
 
     /// Extract the embedded rabcdasm binaries as temporary files so they may
     /// be used
-    pub fn extract() -> IoResult<Extractor> {
+    pub fn unpack() -> IoResult<Extractor> {
         // create a temporary directory
         let dir = tempdir()?;
 
         // extract the binaries
-        let abcexport = Extractor::extract_binary(dir.path(), "abcexport", ABCEXPORT)?;
-        let rabcdasm = Extractor::extract_binary(dir.path(), "rabcdasm", RABCDASM)?;
-        let swfbinexport = Extractor::extract_binary(dir.path(), "swfbinexport", SWFBINEXPORT)?;
+        let abcexport = Extractor::unpack_binary(dir.path(), "abcexport", ABCEXPORT)?;
+        let rabcdasm = Extractor::unpack_binary(dir.path(), "rabcdasm", RABCDASM)?;
+        let swfbinexport = Extractor::unpack_binary(dir.path(), "swfbinexport", SWFBINEXPORT)?;
 
         // return struct
         Ok(Extractor {

@@ -16,7 +16,7 @@ fn test_extraction() {
     write(&swf, CLIENT_SWF).expect("error extracting client SWF");
 
     // extract rabcdasm binaries
-    let extractor = Extractor::extract().expect("error extracting binaries");
+    let extractor = Extractor::unpack().expect("error extracting binaries");
 
     // extract game mappings
     let mappings = extractor

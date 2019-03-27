@@ -1,4 +1,9 @@
-//! Mappings for game IDs, objects, etc
+//! Mappings to allow automatically converting between internal and game
+//! representations without hardcoding.
+//!
+//! With these mappings, realmpipe can be used to support multiple versions of
+//! the game with a single build, allowing for features like automatic updates.
+//! Mappings can be generated at runtime using the `extractor` module.
 
 use crate::packets::InternalPacketId;
 use bimap::BiHashMap;
