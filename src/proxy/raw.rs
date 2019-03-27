@@ -1,8 +1,8 @@
 //! Intermediary representation of packets
 
+use crate::adapters::Error as AdapterError;
 use crate::mappings::Mappings;
-use crate::net::adapters::Error as AdapterError;
-use crate::net::packets::{InternalPacketId, Packet};
+use crate::packets::{InternalPacketId, Packet};
 use bytes::{Bytes, IntoBuf};
 use failure_derive::Fail;
 use std::result::Result as StdResult;

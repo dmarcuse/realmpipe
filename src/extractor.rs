@@ -3,7 +3,7 @@
 //! [rabcdasm](https://github.com/CyberShadow/RABCDAsm).
 
 use crate::mappings::{Error as MappingError, Mappings};
-use crate::net::packets::InternalPacketId;
+use crate::packets::InternalPacketId;
 use bimap::{BiHashMap, Overwritten};
 use failure_derive::Fail;
 use lazy_static::lazy_static;

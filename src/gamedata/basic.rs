@@ -3,7 +3,7 @@
 #![allow(missing_docs)]
 
 use super::stat::StatData;
-use crate::net::adapters::prelude::*;
+use crate::adapters::prelude::*;
 
 macro_rules! auto_data {
     ($name:ident {

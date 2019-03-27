@@ -4,9 +4,9 @@ pub mod codec;
 mod policy;
 pub mod raw;
 
+use self::codec::Codec;
+use self::policy::handle_policy_request;
 use crate::mappings::Mappings;
-use crate::net::proxy::codec::Codec;
-use crate::net::proxy::policy::handle_policy_request;
 use std::convert::identity;
 use std::io::{Error as IoError, Result as IoResult};
 use std::net::SocketAddr;

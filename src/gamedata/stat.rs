@@ -2,7 +2,7 @@
 
 #![allow(missing_docs)]
 
-use crate::net::adapters::prelude::*;
+use crate::adapters::prelude::*;
 
 macro_rules! stat_types {
     ($($name:ident = $value:expr),* $(,)?) => {

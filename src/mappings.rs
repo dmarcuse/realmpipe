@@ -1,6 +1,6 @@
 //! Mappings for game IDs, objects, etc
 
-use crate::net::packets::InternalPacketId;
+use crate::packets::InternalPacketId;
 use bimap::BiHashMap;
 use crypto::rc4::Rc4;
 use failure_derive::Fail;

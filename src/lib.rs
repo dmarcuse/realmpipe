@@ -5,8 +5,11 @@
 #![deny(bare_trait_objects)]
 #![deny(missing_docs)]
 
+pub mod adapters;
 mod ext;
 pub mod extractor;
+pub mod gamedata;
 pub mod mappings;
-pub mod net;
+pub mod packets;
+pub mod proxy;
 pub mod serverlist;

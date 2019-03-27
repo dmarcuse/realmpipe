@@ -167,7 +167,7 @@ macro_rules! define_packets {
             /// # Example
             ///
             /// ```
-            /// use realmpipe::net::packets::{Packet, client};
+            /// use realmpipe::packets::{Packet, client};
             ///
             /// // create a wrapped packet
             /// let pkt = Packet::CancelTrade(client::CancelTrade {});
@@ -337,8 +337,8 @@ mod manual_adapters;
 
 /// Unified set of all packet definitions
 mod unified_definitions {
-    use crate::net::adapters::prelude::*;
-    use crate::net::data::*;
+    use crate::adapters::prelude::*;
+    use crate::gamedata::*;
     use lazy_static::lazy_static;
     use serde::{Deserialize, Serialize};
     use std::collections::HashMap;

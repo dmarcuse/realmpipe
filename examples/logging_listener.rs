@@ -12,7 +12,7 @@ use tokio::prelude::*;
 
 use realmpipe::extractor::Extractor;
 use realmpipe::mappings::Mappings;
-use realmpipe::net::proxy::{client_listener, server_connection};
+use realmpipe::proxy::{client_listener, server_connection};
 
 fn extract_mappings() -> Mappings {
     // create a temp dir

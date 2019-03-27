@@ -1,7 +1,7 @@
 //! Manually implemented packet adapters
 
 use super::server::Pic;
-use crate::net::adapters::prelude::*;
+use crate::adapters::prelude::*;
 
 impl NetworkAdapter for Pic {
     fn get_be(bytes: &mut dyn Buf) -> Result<Self> {
