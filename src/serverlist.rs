@@ -122,7 +122,7 @@ impl ServerList {
     ///
     /// ```
     /// use realmpipe::serverlist::ServerList;
-    /// use tokio::runtime::Runtime;
+    /// use tokio::runtime::current_thread::Runtime;
     ///
     /// // start a tokio runtime
     /// let mut rt = Runtime::new().unwrap();
