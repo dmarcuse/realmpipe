@@ -41,27 +41,29 @@ pub enum Error {
 pub type Result<T> = StdResult<T, Error>;
 
 impl RawPacket {
-    /// Create a new raw packet from the given bytes. The first byte of the
-    /// buffer is the game's packet ID, and the remaining bytes are the
-    /// decrypted contents of the packet.
+    /// Create a new raw packet from the given bytes. The first four bytes of
+    /// the buffer are the big-endian integer length of the packet. THe fifth
+    /// byte is the game packet ID. Any remaining bytes represent the contents
+    /// of the packet, which should be in their decrypted form.
     pub(crate) fn new(bytes: Bytes) -> RawPacket {
-        debug_assert!(!bytes.is_empty(), "cannot have packet without ID");
+        debug_assert!(bytes.len() >= 5, "packet must be at least 5 bytes");
         Self { bytes }
     }
 
-    /// Convert this packet back into the underlying `Bytes`.
+    /// Convert this packet back into the underlying `Bytes`. Check the `new`
+    /// method for details on the structure.
     pub(crate) fn into_bytes(self) -> Bytes {
         self.bytes
     }
 
     /// Get the game ID representing this packet type
     pub fn game_id(&self) -> u8 {
-        self.bytes[0]
+        self.bytes[4]
     }
 
     /// Get the decrypted binary contents of this packet
     pub fn contents(&self) -> Bytes {
-        self.bytes.slice_from(1)
+        self.bytes.slice_from(5)
     }
 
     /// Attempt to convert this raw packet into a deserialized packet using
@@ -82,10 +84,21 @@ impl RawPacket {
         let internal_id = packet.get_internal_id();
 
         if let Some(game_id) = mappings.get_game_id(internal_id) {
-            let mut buf = vec![];
+            // reserve 4 bytes for the size
+            let mut buf = vec![0u8; 4];
+
+            // store the game id
             buf.push(game_id);
+
+            // encode packet
             packet.to_bytes(&mut buf).map_err(Error::AdapterError)?;
-            Ok(Self::new(buf.into()))
+
+            // store packet length
+            let len = buf.len() as u32;
+            (&mut buf[0..4]).copy_from_slice(&len.to_be_bytes()[..]);
+
+            // convert it into a RawPacket
+            Ok(RawPacket::new(buf.into()))
         } else {
             Err(Error::UnmappedInternalId(internal_id))
         }

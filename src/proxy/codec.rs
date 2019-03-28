@@ -2,8 +2,8 @@
 
 use super::raw::RawPacket;
 use crate::mappings::Mappings;
+use crate::rc4::Rc4;
 use bytes::{Buf, BufMut, BytesMut};
-use crypto::rc4::Rc4;
 use crypto::symmetriccipher::SynchronousStreamCipher;
 use failure_derive::Fail;
 use num::ToPrimitive;
@@ -76,20 +76,13 @@ impl Decoder for Codec {
 
         // full packet has been received
         // remove the entire packet from the buffer
-        let packet = buf.split_to(packet_size);
+        let mut packet = buf.split_to(packet_size);
 
-        // extract the packet contents
-        // first allocate enough memory
-        let mut payload = vec![0u8; packet_size - 4];
-
-        // then extract the ID - it doesn't need to be decrypted
-        payload[0] = packet[4];
-
-        // finally decrypt the contents of the packet
-        self.recv_rc4.process(&packet[5..], &mut payload[1..]);
+        // decrypt the packet contents
+        self.recv_rc4.process(&mut packet[5..]);
 
         // we have the decrypted packet, yield it
-        Ok(Some(RawPacket::new(payload.into())))
+        Ok(Some(RawPacket::new(packet.freeze())))
     }
 }
 
@@ -101,25 +94,18 @@ impl Encoder for Codec {
         // convert the packet back into bytes
         let packet = packet.into_bytes();
 
-        if let Some(payload_size) = packet.len().to_u32() {
-            let packet_size = payload_size + 4;
-
-            // reserve some space to store the packet
-            dst.reserve(packet_size as usize);
-
-            // write the packet length and ID
-            dst.put_u32_be(packet_size);
-            dst.put_u8(packet[0]);
+        if let Some(packet_size) = packet.len().to_u32() {
+            // make the packet mutable so we can encrypt it
+            let mut packet = BytesMut::from(packet);
 
             // encrypt the packet contents
-            let mut encrypted = vec![0u8; (payload_size - 1) as usize];
-            self.send_rc4.process(&packet[1..], &mut encrypted[..]);
+            self.send_rc4.process(&mut packet[5..]);
 
-            // write the packet contents
-            dst.extend_from_slice(&encrypted[..]);
+            // finally, write the packet
+            dst.extend_from_slice(&packet[..]);
             Ok(())
         } else {
-            Err(CodecError::TooLong(packet.len() + 4))
+            Err(CodecError::TooLong(packet.len()))
         }
     }
 }

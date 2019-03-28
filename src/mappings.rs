@@ -6,15 +6,16 @@
 //! Mappings can be generated at runtime using the `extractor` module.
 
 use crate::packets::InternalPacketId;
+use crate::rc4::Rc4;
 use bimap::BiHashMap;
-use crypto::rc4::Rc4;
 use failure_derive::Fail;
 use hex::FromHexError;
 use serde::{Deserialize, Serialize};
 use std::result::Result as StdResult;
 
 /// The required length for the binary RC4 keys
-const RC4_LEN: usize = 26;
+/// The hexadecimal representation passed to Mappings::new should be double this
+pub const RC4_LEN: usize = 26;
 
 /// Mappings extracted from the official ROTMG client needed to properly proxy
 /// traffic

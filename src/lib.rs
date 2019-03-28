@@ -12,5 +12,5 @@ pub mod gamedata;
 pub mod mappings;
 pub mod packets;
 pub mod proxy;
-mod rc4;
+pub mod rc4;
 pub mod serverlist;
