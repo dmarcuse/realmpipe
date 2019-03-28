@@ -3,10 +3,8 @@
 use super::raw::RawPacket;
 use crate::mappings::Mappings;
 use crate::rc4::Rc4;
-use bytes::{Buf, BufMut, BytesMut};
-use crypto::symmetriccipher::SynchronousStreamCipher;
+use bytes::{Buf, BytesMut};
 use failure_derive::Fail;
-use num::ToPrimitive;
 use std::convert::From;
 use std::io::{Cursor, Error as IoError};
 use tokio::codec::{Decoder, Encoder};
@@ -24,10 +22,6 @@ pub enum CodecError {
     /// A low level IO error
     #[fail(display = "IO error: {}", _0)]
     IoError(IoError),
-
-    /// The packet was too long to be encoded
-    #[fail(display = "Packet was too long ({})", _0)]
-    TooLong(usize),
 }
 
 impl From<IoError> for CodecError {
@@ -94,18 +88,14 @@ impl Encoder for Codec {
         // convert the packet back into bytes
         let packet = packet.into_bytes();
 
-        if let Some(packet_size) = packet.len().to_u32() {
-            // make the packet mutable so we can encrypt it
-            let mut packet = BytesMut::from(packet);
+        // make the packet mutable so we can encrypt it
+        let mut packet = BytesMut::from(packet);
 
-            // encrypt the packet contents
-            self.send_rc4.process(&mut packet[5..]);
+        // encrypt the packet contents
+        self.send_rc4.process(&mut packet[5..]);
 
-            // finally, write the packet
-            dst.extend_from_slice(&packet[..]);
-            Ok(())
-        } else {
-            Err(CodecError::TooLong(packet.len()))
-        }
+        // finally, write the packet
+        dst.extend_from_slice(&packet[..]);
+        Ok(())
     }
 }
