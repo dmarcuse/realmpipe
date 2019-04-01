@@ -2,7 +2,7 @@ use realmpipe::extractor::Extractor;
 use std::fs::write;
 use tempfile::tempdir;
 
-const CLIENT_SWF: &[u8] = include_bytes!("AssembleeGameClient1553152472.swf");
+const CLIENT_SWF: &[u8] = include_bytes!("AssembleeGameClient1554116567.swf");
 
 #[test]
 fn test_extraction() {

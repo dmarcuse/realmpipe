@@ -22,7 +22,7 @@ fn extract_mappings() -> Mappings {
     let swf = dir.path().join("client.swf");
     write(
         &swf,
-        &include_bytes!("../tests/AssembleeGameClient1553152472.swf")[..],
+        &include_bytes!("../tests/AssembleeGameClient1554116567.swf")[..],
     )
     .expect("error extracting client SWF");
 
