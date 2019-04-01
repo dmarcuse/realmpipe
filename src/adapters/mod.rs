@@ -48,11 +48,13 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 /// A trait providing functionality for converting a type to or from buffers of
 /// bytes in big endian notation.
-pub trait NetworkAdapter: Sized + 'static {
+pub trait NetworkAdapter {
     /// Decode an instance from the given buffer. The amount of data remaining
     /// in the buffer should be checked and AdapterError::InsufficientData
     /// should be returned when appropriate.
-    fn get_be(bytes: &mut dyn Buf) -> Result<Self>;
+    fn get_be(bytes: &mut dyn Buf) -> Result<Self>
+    where
+        Self: Sized;
 
     /// Encode an instance to the given buffer. It may be assumed that the
     /// buffer will be large enough to store the entire encoded sequence, so no

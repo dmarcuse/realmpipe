@@ -127,7 +127,11 @@ macro_rules! define_packets {
         }
 
         // next, downcast functionality, achieved with a trait...
+        /// A trait providing functionality to attempt to downcast this object
+        /// into another. This is intended mostly for internal use, and probably
+        /// shouldn't be used directly.
         pub trait Downcast<T> {
+            /// Attempt to downcast this object into a different type
             fn downcast(self) -> Option<T>;
         }
 
@@ -324,14 +328,30 @@ macro_rules! define_packets {
                 self.get_internal_id().get_name()
             }
         }
+
+        /// Indicates that a type is packet data
+        pub trait PacketData {
+            /// The internal packet ID associated with this type of packet
+            const INTERNAL_ID: InternalPacketId;
+        }
+
+        $(
+            $(
+                impl PacketData for $name {
+                    const INTERNAL_ID: InternalPacketId = InternalPacketId::$name;
+                }
+            )*
+        )*
     };
 }
 
 // re-export the packets and other types (defined below)
 pub use self::unified_definitions::client;
 pub use self::unified_definitions::server;
+pub(crate) use self::unified_definitions::Downcast;
 pub use self::unified_definitions::InternalPacketId;
 pub use self::unified_definitions::Packet;
+pub(crate) use self::unified_definitions::PacketData;
 
 mod manual_adapters;
 

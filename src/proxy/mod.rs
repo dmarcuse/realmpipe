@@ -14,6 +14,9 @@ use tokio::codec::{Decoder, Framed};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
+/// A framed TCP connection that operates on `RawPacket` instances
+pub type Connection = Framed<TcpStream, Codec>;
+
 fn configure_stream(s: TcpStream) -> IoResult<TcpStream> {
     s.set_nodelay(true)?;
 
@@ -27,7 +30,7 @@ fn configure_stream(s: TcpStream) -> IoResult<TcpStream> {
 pub fn client_listener(
     address: &SocketAddr,
     mappings: impl AsRef<Mappings>,
-) -> IoResult<impl Stream<Item = Framed<TcpStream, Codec>, Error = IoError>> {
+) -> IoResult<impl Stream<Item = Connection, Error = IoError>> {
     let stream = TcpListener::bind(address)?
         .incoming()
         .and_then(configure_stream)
@@ -44,7 +47,7 @@ pub fn client_listener(
 pub fn server_connection(
     address: &SocketAddr,
     mappings: impl AsRef<Mappings>,
-) -> impl Future<Item = Framed<TcpStream, Codec>, Error = IoError> {
+) -> impl Future<Item = Connection, Error = IoError> {
     TcpStream::connect(address)
         .and_then(configure_stream)
         .map(move |s| Codec::new_server(mappings.as_ref()).framed(s))

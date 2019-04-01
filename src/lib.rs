@@ -11,6 +11,7 @@ pub mod extractor;
 pub mod gamedata;
 pub mod mappings;
 pub mod packets;
+pub mod pipe;
 pub mod proxy;
 pub mod rc4;
 pub mod serverlist;
