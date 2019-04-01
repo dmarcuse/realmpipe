@@ -16,7 +16,7 @@ pub struct Codec {
     send_rc4: Rc4,
 }
 
-/// An error that occurred while writing a packet
+/// An error that occurred while reading or writing a packet
 #[derive(Debug, Fail)]
 pub enum CodecError {
     /// A low level IO error

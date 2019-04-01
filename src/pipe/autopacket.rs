@@ -3,8 +3,8 @@ use crate::packets::{Downcast, Packet, PacketData};
 use crate::proxy::raw::{RawPacket, Result as PacketResult};
 use log::warn;
 
-/// A wrapper around a `RawPacket`, which may be automatically downcast to a
-/// `Packet` instance.
+/// A wrapper around a `RawPacket`, which may be automatically converted to
+/// a concrete packet type when necessary.
 pub struct AutoPacket<'a> {
     raw: RawPacket,
     mappings: &'a Mappings,
@@ -24,6 +24,11 @@ impl<'a> AutoPacket<'a> {
     /// Get the underlying `RawPacket` instance
     pub fn get_raw(&self) -> &RawPacket {
         &self.raw
+    }
+
+    /// Consume this packet and return the raw packet
+    pub fn into_raw(self) -> RawPacket {
+        self.raw
     }
 
     /// Get the mappings used by this `AutoPacket`
