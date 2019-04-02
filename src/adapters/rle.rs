@@ -29,6 +29,11 @@ impl<T, S> RLE<T, S> {
     pub fn unwrap(self) -> T {
         self.inner
     }
+
+    /// Get a reference to the contained value
+    pub fn get_ref(&self) -> &T {
+        &self.inner
+    }
 }
 
 impl<T, S> NetworkAdapter for RLE<Vec<T>, S>
@@ -110,6 +115,12 @@ impl<T, S> AsRef<T> for RLE<T, S> {
 impl<T: Debug, S> Debug for RLE<T, S> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{:?}", self.inner)
+    }
+}
+
+impl<T: Display, S> Display for RLE<T, S> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(f, "{}", self.inner)
     }
 }
 

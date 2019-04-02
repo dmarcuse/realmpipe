@@ -36,6 +36,38 @@ impl<'a> AutoPacket<'a> {
         self.mappings
     }
 
+    /// Get this packet as a `Packet`
+    pub fn get_any(&mut self) -> Option<&Packet> {
+        let id = self.mappings.get_internal_id(self.raw.game_id());
+
+        if let Some(id) = id {
+            if let None = self.decoded {
+                // decode the packet
+                self.decoded = Some(self.raw.to_packet(self.mappings));
+
+                // if the result was an error, log it
+                if let Some(Err(e)) = &self.decoded {
+                    warn!(
+                        "Error decoding packet of type {:?}: {:?}. Contents: {:#x?}",
+                        id,
+                        e,
+                        self.raw.contents()
+                    )
+                }
+            }
+
+            // by this point, we have a packet result
+            if self.decoded.as_ref().unwrap().is_ok() {
+                // we have a packet, unwrap and downcast it
+                Some(self.decoded.as_ref().unwrap().as_ref().unwrap())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     /// Attempt to downcast this packet into a concrete type
     pub fn downcast<'b, T>(&'b mut self) -> Option<&'b T>
     where
@@ -50,34 +82,7 @@ impl<'a> AutoPacket<'a> {
             return None;
         }
 
-        // check that we have a stored result
-        if let None = self.decoded {
-            // attempt to downcast it
-            self.decoded = Some(self.raw.to_packet(self.mappings));
-
-            // if the result was an error, log it
-            if let Some(Err(e)) = &self.decoded {
-                warn!(
-                    "Error decoding packet of type {:?}: {:?}. Contents: {:#x?}",
-                    id,
-                    e,
-                    self.raw.contents()
-                )
-            }
-        }
-
-        // by this point, we have a packet result and just need to handle it
-        if self.decoded.as_ref().unwrap().is_ok() {
-            // we have a packet, unwrap and downcast it
-            self.decoded
-                .as_ref()
-                .unwrap()
-                .as_ref()
-                .unwrap()
-                .downcast_ref()
-        } else {
-            // we have an error, just ignore it and return None
-            None
-        }
+        // decode (if necessary) and downcast the packet
+        self.get_any().and_then(|p| p.downcast_ref())
     }
 }

@@ -1,18 +1,43 @@
 //! A simple example which starts a listener on 127.0.0.1:2050 accepting
-//! incoming game connections, then logging all packets received.
-
-use std::fs::write;
-use std::net::SocketAddr;
-use std::str::FromStr;
-use std::sync::Arc;
+//! incoming game connections, then logs all chat messages to console
 
 use log::{error, info};
-use tempfile::tempdir;
-use tokio::prelude::*;
-
 use realmpipe::extractor::Extractor;
 use realmpipe::mappings::Mappings;
-use realmpipe::proxy::{client_listener, server_connection};
+use realmpipe::packets::{client, server};
+use realmpipe::pipe::{AutoPacket, Pipe};
+use realmpipe::pipe::{Plugin, PluginState};
+use realmpipe::proxy::{client_listener, server_connection, Connection};
+use realmpipe::serverlist::ServerList;
+use std::fs::write;
+use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::Arc;
+use tempfile::tempdir;
+use tokio::prelude::*;
+use tokio::runtime::Runtime;
+
+struct LoggingPlugin;
+
+impl Plugin for LoggingPlugin {
+    fn init_plugin(&mut self, client: &Connection, server: &Connection) -> Box<PluginState> {
+        info!(
+            "Initializing state for connection between {} and {}",
+            client.get_ref().peer_addr().unwrap(),
+            server.get_ref().peer_addr().unwrap()
+        );
+        Box::new(LoggingPlugin)
+    }
+}
+
+impl PluginState for LoggingPlugin {
+    fn on_packet(&mut self, packet: &mut AutoPacket) {
+        if let Some(m) = packet.downcast::<server::Text>() {
+            info!("{} said: {}", m.name, m.text);
+        } else if let Some(r) = packet.downcast::<server::Reconnect>() {
+            info!("Got reconnect packet: {:?}", r);
+        }
+    }
+}
 
 fn extract_mappings() -> Mappings {
     // create a temp dir
@@ -35,77 +60,47 @@ fn extract_mappings() -> Mappings {
 }
 
 fn main() {
-    simple_logger::init_with_level(log::Level::Debug).expect("error initializing logger");
+    simple_logger::init_with_level(log::Level::Info).expect("error initializing logger");
 
+    // get the current mappings
     info!("Extracting game mappings");
     let mappings = Arc::new(extract_mappings());
 
     // the local address to listen on
-    let local_addr = SocketAddr::from_str("127.0.0.1:2050").unwrap();
+    let local_addr = SocketAddr::from((Ipv4Addr::new(127, 0, 0, 1), 2050));
 
-    // the remote address to connect to
-    // at the time of writing, this is USEast
-    let remote_addr = SocketAddr::from_str("52.23.232.42:2050").unwrap();
+    // initialize a tokio runtime
+    let mut rt = Runtime::new().expect("error initializing tokio runtime");
 
-    info!("starting listener on {:?}", &local_addr);
-    tokio::run(
-        client_listener(&local_addr, mappings.clone())
-            .unwrap()
-            .map_err(|e| panic!("unexpected error: {}", e))
-            .and_then(move |client| {
-                info!(
-                    "Accepted connection from {}",
-                    client.get_ref().peer_addr().unwrap()
-                );
+    // get the server list
+    let servers = rt
+        .block_on(ServerList::get_official_servers())
+        .expect("error getting server list");
 
-                server_connection(&remote_addr, mappings.clone())
-                    .map(|server| (client, server))
-                    .inspect(|(client, server)| {
-                        info!(
-                            "Proxied connection between {} and {} established",
-                            client.get_ref().peer_addr().unwrap(),
-                            server.get_ref().peer_addr().unwrap()
-                        )
-                    })
+    // now that we have the necessary components, construct the pipe
+    let pipe: Arc<Pipe> = Arc::new(
+        Pipe::builder()
+            .servers(servers, "USEast")
+            .mappings(Arc::clone(&mappings))
+            .plugin(Box::new(LoggingPlugin))
+            .build()
+            .expect("error constructing pipe"),
+    );
+
+    // everything is set up, we just need to actually use the pipe now
+    rt.block_on_all(
+        client_listener(&local_addr, Arc::clone(&mappings))
+            .expect("error starting listener")
+            .for_each(move |client| {
+                tokio::spawn(Arc::clone(&pipe).accept_client(client).map_err(|e| {
+                    error!("relay error: {:?}", e);
+                }));
+
+                Ok(())
             })
             .map_err(|e| {
-                error!("connection error: {}", e);
-            })
-            .for_each(|(client, server)| {
-                let (client_sink, client_stream) = client.split();
-                let (server_sink, server_stream) = server.split();
-
-                let client_fwd = client_stream
-                    .inspect(|raw| {
-                        info!(
-                            "Raw client pkt id {} len {}",
-                            raw.game_id(),
-                            raw.contents().len()
-                        );
-                    })
-                    .forward(server_sink)
-                    .map_err(|e| {
-                        error!("client pkt error: {}", e);
-                    })
-                    .map(|_| ());
-
-                let server_fwd = server_stream
-                    .inspect(|raw| {
-                        info!(
-                            "Raw server pkt id {} len {}",
-                            raw.game_id(),
-                            raw.contents().len()
-                        );
-                    })
-                    .forward(client_sink)
-                    .map_err(|e| {
-                        error!("server pkt error: {}", e);
-                    })
-                    .map(|_| ());
-
-                tokio::spawn(client_fwd);
-                tokio::spawn(server_fwd);
-                Ok(())
+                error!("listener error: {:?}", e);
             }),
-    );
+    )
+    .expect("error with listener");
 }

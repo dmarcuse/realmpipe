@@ -10,6 +10,7 @@ use crate::mappings::Mappings;
 use std::convert::identity;
 use std::io::{Error as IoError, Result as IoResult};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::codec::{Decoder, Framed};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
@@ -29,8 +30,8 @@ fn configure_stream(s: TcpStream) -> IoResult<TcpStream> {
 /// `RawPacket` instances.
 pub fn client_listener(
     address: &SocketAddr,
-    mappings: impl AsRef<Mappings>,
-) -> IoResult<impl Stream<Item = Connection, Error = IoError>> {
+    mappings: Arc<Mappings>,
+) -> IoResult<impl Stream<Item = Connection, Error = IoError> + Send> {
     let stream = TcpListener::bind(address)?
         .incoming()
         .and_then(configure_stream)
@@ -46,8 +47,8 @@ pub fn client_listener(
 /// communication by way of `RawPacket` instances.
 pub fn server_connection(
     address: &SocketAddr,
-    mappings: impl AsRef<Mappings>,
-) -> impl Future<Item = Connection, Error = IoError> {
+    mappings: Arc<Mappings>,
+) -> impl Future<Item = Connection, Error = IoError> + Send {
     TcpStream::connect(address)
         .and_then(configure_stream)
         .map(move |s| Codec::new_server(mappings.as_ref()).framed(s))

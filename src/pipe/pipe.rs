@@ -5,6 +5,7 @@ use crate::mappings::Mappings;
 use crate::proxy::{server_connection, Connection};
 use crate::serverlist::ServerList;
 use derive_builder::Builder;
+use std::default::Default;
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
@@ -25,6 +26,7 @@ pub enum PacketSide {
 #[derive(Builder)]
 #[builder(pattern = "owned")]
 pub struct Pipe {
+    #[builder(default = "Mutex::new(Vec::new())")]
     plugins: Mutex<Vec<Box<dyn Plugin>>>,
     mappings: Arc<Mappings>,
     #[builder(private, setter(name = "internal_servers"))]
@@ -47,7 +49,8 @@ impl PipeBuilder {
     /// Specify the list of remote servers and the default one. The list must
     /// contain at least one server, and the default server name must be present
     /// in the list.
-    pub fn servers(self, list: ServerList, default: String) -> Self {
+    pub fn servers(self, list: ServerList, default: &str) -> Self {
+        let default = default.to_lowercase();
         if list.get_map().is_empty() {
             panic!("server list may not be empty");
         } else if let None = list.get_ip(&default) {
@@ -62,12 +65,22 @@ impl PipeBuilder {
 }
 
 impl Pipe {
+    /// Create a new pipe builder
+    pub fn builder() -> PipeBuilder {
+        PipeBuilder::default()
+    }
+
     /// Get the socket address for the default server
     pub fn get_default_server(&self) -> SocketAddr {
         self.servers.get_socket(&self.default_server).unwrap()
     }
 
-    pub fn accept_client(self: Arc<Self>, client: Connection) -> impl Future<Error = PipeError> {
+    /// Accept a given client connection using this pipe, opening the server
+    /// connection, then processing packets with plugins until closure
+    pub fn accept_client(
+        self: Arc<Self>,
+        client: Connection,
+    ) -> impl Future<Item = (), Error = PipeError> + Send {
         server_connection(&self.get_default_server(), Arc::clone(&self.mappings))
             .from_err()
             .and_then(move |server| {
@@ -95,7 +108,7 @@ impl Pipe {
 
                 // map the sinks to filter to the packets from the appropriate side
                 let client_sink = client_sink.with_flat_map(
-                    |(side, pkt)| -> Box<dyn Stream<Item = _, Error = _>> {
+                    |(side, pkt)| -> Box<dyn Stream<Item = _, Error = _> + Send> {
                         match side {
                             PacketSide::Client => Box::new(futures::stream::empty()),
                             PacketSide::Server => Box::new(futures::stream::once(Ok(pkt))),
@@ -104,7 +117,7 @@ impl Pipe {
                 );
 
                 let server_sink = server_sink.with_flat_map(
-                    |(side, pkt)| -> Box<dyn Stream<Item = _, Error = _>> {
+                    |(side, pkt)| -> Box<dyn Stream<Item = _, Error = _> + Send> {
                         match side {
                             PacketSide::Client => Box::new(futures::stream::once(Ok(pkt))),
                             PacketSide::Server => Box::new(futures::stream::empty()),
@@ -118,20 +131,21 @@ impl Pipe {
                 // finally, tie it all together into one future
                 stream
                     .map(
-                        move |(side, raw_pkt)| -> Box<dyn Stream<Item = _, Error = PipeError>> {
+                        move |(side, raw)| -> Box<dyn Stream<Item = _, Error = PipeError> + Send> {
                             // wrap the raw packet as an auto packet for easy downcasting
-                            let mut auto_pkt = AutoPacket::new(raw_pkt, self.mappings.deref());
+                            let mut auto = AutoPacket::new(raw, self.mappings.deref());
 
                             // invoke plugin callbacks
-                            plugins.iter_mut().for_each(|p| p.on_packet(&mut auto_pkt));
+                            plugins.iter_mut().for_each(|p| p.on_packet(&mut auto));
 
                             // pass through the original packet
-                            Box::new(futures::stream::once(Ok((side, auto_pkt.into_raw()))))
+                            Box::new(futures::stream::once(Ok((side, auto.into_raw()))))
                         },
                     )
                     .flatten()
                     .forward(sink)
                     .from_err()
+                    .map(|_| ())
             })
     }
 }
