@@ -156,9 +156,9 @@ impl Pipe {
                             // next, we add any packets that plugins requested to be sent
                             for pkt in ctx.extra {
                                 let side = if pkt.get_internal_id().is_server() {
-                                    PacketSide::Server
-                                } else {
                                     PacketSide::Client
+                                } else {
+                                    PacketSide::Server
                                 };
 
                                 let raw = RawPacket::from_packet(pkt, self.mappings.deref());

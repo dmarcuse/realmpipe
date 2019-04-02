@@ -2,9 +2,10 @@
 //! incoming game connections, then logs all chat messages to console
 
 use log::{error, info};
+use realmpipe::adapters::RLE;
 use realmpipe::extractor::Extractor;
 use realmpipe::mappings::Mappings;
-use realmpipe::packets::server;
+use realmpipe::packets::{server, Packet};
 use realmpipe::pipe::{AutoPacket, PacketContext, Pipe};
 use realmpipe::pipe::{Plugin, PluginState};
 use realmpipe::proxy::{client_listener, Connection};
@@ -33,6 +34,15 @@ impl PluginState for LoggingPlugin {
     fn on_packet(&mut self, packet: &mut AutoPacket, ctx: &mut PacketContext) {
         if let Some(m) = packet.downcast::<server::Text>() {
             info!("{} said: {}", m.name, m.text);
+            info!("Debug data: {:?}", m);
+
+            ctx.cancel_packet();
+
+            let mut cloned = m.clone();
+            cloned.is_supporter = true;
+            cloned.bubble_time = 0;
+            cloned.name = RLE::new("Somebody".to_string());
+            ctx.send_packet(Packet::Text(cloned));
         } else if let Some(r) = packet.downcast::<server::Reconnect>() {
             info!("Got reconnect packet: {:?}", r);
         }
