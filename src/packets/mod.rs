@@ -73,6 +73,15 @@ macro_rules! define_single_packet {
     };
 }
 
+macro_rules! is_serverside {
+    (Client) => {
+        true
+    };
+    (Server) => {
+        false
+    };
+}
+
 /// Define which packets belong to the client/server sides
 macro_rules! define_side {
     (Client: $( $name:ident ),* $(,)? ) => {
@@ -342,6 +351,30 @@ macro_rules! define_packets {
                 }
             )*
         )*
+
+        impl InternalPacketId {
+            const SERVERSIDE: [bool; 255] = {
+                let mut arr: [bool; 255] = [false; 255];
+
+                $(
+                    $(
+                        arr[InternalPacketId::$name as usize] = is_serverside!($side);
+                    )*
+                )*
+
+                arr
+            };
+
+            /// Whether this packet is sent by the server
+            pub fn is_server(self) -> bool {
+                Self::SERVERSIDE[self as usize]
+            }
+
+            /// Whether this packet is sent by the client
+            pub fn is_client(self) -> bool {
+                !self.is_server()
+            }
+        }
     };
 }
 

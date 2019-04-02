@@ -1,4 +1,4 @@
-use crate::pipe::AutoPacket;
+use super::{AutoPacket, PacketContext};
 use crate::proxy::Connection;
 
 /// A plugin to handle events
@@ -11,5 +11,5 @@ pub trait Plugin: Send {
 #[allow(unused_variables)]
 pub trait PluginState: Send {
     /// Handle an intercepted packet
-    fn on_packet(&mut self, packet: &mut AutoPacket) {}
+    fn on_packet(&mut self, packet: &mut AutoPacket, context: &mut PacketContext) {}
 }

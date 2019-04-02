@@ -1,10 +1,12 @@
 #![allow(missing_docs)]
 
-use super::{AutoPacket, PipeError, Plugin};
+use super::{AutoPacket, PacketContext, PipeError, Plugin};
 use crate::mappings::Mappings;
+use crate::proxy::raw::RawPacket;
 use crate::proxy::{server_connection, Connection};
 use crate::serverlist::ServerList;
 use derive_builder::Builder;
+use log::warn;
 use std::default::Default;
 use std::net::SocketAddr;
 use std::ops::Deref;
@@ -135,11 +137,40 @@ impl Pipe {
                             // wrap the raw packet as an auto packet for easy downcasting
                             let mut auto = AutoPacket::new(raw, self.mappings.deref());
 
-                            // invoke plugin callbacks
-                            plugins.iter_mut().for_each(|p| p.on_packet(&mut auto));
+                            // create a packet context
+                            let mut ctx = PacketContext::default();
 
-                            // pass through the original packet
-                            Box::new(futures::stream::once(Ok((side, auto.into_raw()))))
+                            // invoke plugin callbacks
+                            plugins
+                                .iter_mut()
+                                .for_each(|p| p.on_packet(&mut auto, &mut ctx));
+
+                            // queue up packets to send
+                            let mut queue = Vec::with_capacity(1 + ctx.extra.len());
+
+                            // if any plugin requested to cancel this packet, we don't send it
+                            if !ctx.cancelled {
+                                queue.push((side, auto.into_raw()));
+                            }
+
+                            // next, we add any packets that plugins requested to be sent
+                            for pkt in ctx.extra {
+                                let side = if pkt.get_internal_id().is_server() {
+                                    PacketSide::Server
+                                } else {
+                                    PacketSide::Client
+                                };
+
+                                let raw = RawPacket::from_packet(pkt, self.mappings.deref());
+
+                                match raw {
+                                    Ok(raw) => queue.push((side, raw)),
+                                    Err(e) => warn!("Error encoding packet: {:?}", e),
+                                }
+                            }
+
+                            // finally, return the queue
+                            Box::new(futures::stream::iter_ok(queue))
                         },
                     )
                     .flatten()

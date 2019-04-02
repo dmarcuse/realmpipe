@@ -4,10 +4,10 @@
 use log::{error, info};
 use realmpipe::extractor::Extractor;
 use realmpipe::mappings::Mappings;
-use realmpipe::packets::{client, server};
-use realmpipe::pipe::{AutoPacket, Pipe};
+use realmpipe::packets::server;
+use realmpipe::pipe::{AutoPacket, PacketContext, Pipe};
 use realmpipe::pipe::{Plugin, PluginState};
-use realmpipe::proxy::{client_listener, server_connection, Connection};
+use realmpipe::proxy::{client_listener, Connection};
 use realmpipe::serverlist::ServerList;
 use std::fs::write;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -30,7 +30,7 @@ impl Plugin for LoggingPlugin {
 }
 
 impl PluginState for LoggingPlugin {
-    fn on_packet(&mut self, packet: &mut AutoPacket) {
+    fn on_packet(&mut self, packet: &mut AutoPacket, ctx: &mut PacketContext) {
         if let Some(m) = packet.downcast::<server::Text>() {
             info!("{} said: {}", m.name, m.text);
         } else if let Some(r) = packet.downcast::<server::Reconnect>() {
