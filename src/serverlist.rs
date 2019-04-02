@@ -91,9 +91,7 @@ impl ServerList {
             serverlist.insert(name.as_ref().to_lowercase(), ip.clone());
 
             let abbreviation = abbreviate(&name.as_ref().to_lowercase());
-            if !serverlist.contains_key(&abbreviation) {
-                serverlist.insert(abbreviation, ip.clone());
-            }
+            serverlist.entry(abbreviation).or_insert(*ip);
         }
 
         Self {

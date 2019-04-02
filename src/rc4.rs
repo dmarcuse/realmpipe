@@ -49,9 +49,8 @@ impl Rc4 {
     }
 
     /// Process the given input with this RC4 state
-    pub fn process<'a>(&mut self, bytes: &mut [u8]) {
+    pub fn process(&mut self, bytes: &mut [u8]) {
         for n in bytes.iter_mut() {
-            //            *n = *n ^ self.next();
             *n ^= self.next();
         }
     }

@@ -297,7 +297,7 @@ macro_rules! define_packets {
         impl Packet {
             /// Attempt to encode the decrypted contents of this packet into the
             /// given buffer.
-            pub(crate) fn to_bytes(self, buf: &mut dyn BufMut) -> Result<()> {
+            pub(crate) fn into_bytes(self, buf: &mut dyn BufMut) -> Result<()> {
                 self.get_internal_id().get_encoder()(self, buf)
             }
         }

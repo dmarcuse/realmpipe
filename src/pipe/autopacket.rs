@@ -41,7 +41,7 @@ impl<'a> AutoPacket<'a> {
         let id = self.mappings.get_internal_id(self.raw.game_id());
 
         if let Some(id) = id {
-            if let None = self.decoded {
+            if self.decoded.is_none() {
                 // decode the packet
                 self.decoded = Some(self.raw.to_packet(self.mappings));
 

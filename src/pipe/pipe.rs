@@ -55,7 +55,7 @@ impl PipeBuilder {
         let default = default.to_lowercase();
         if list.get_map().is_empty() {
             panic!("server list may not be empty");
-        } else if let None = list.get_ip(&default) {
+        } else if list.get_ip(&default).is_none() {
             panic!(
                 "default server must be present in list: default {} list {:?}",
                 default, list

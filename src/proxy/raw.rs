@@ -91,7 +91,7 @@ impl RawPacket {
             buf.push(game_id);
 
             // encode packet
-            packet.to_bytes(&mut buf).map_err(Error::AdapterError)?;
+            packet.into_bytes(&mut buf).map_err(Error::AdapterError)?;
 
             // store packet length
             let len = buf.len() as u32;
