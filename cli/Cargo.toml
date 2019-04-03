@@ -1,0 +1,12 @@
+[package]
+name = "realmpipe_cli"
+version = "0.1.0"
+authors = ["Dominic Marcuse <dominic@marcuse.us>"]
+edition = "2018"
+
+[dependencies]
+realmpipe_core = { path = "../core" }
+realmpipe_extractor = { path = "../extractor" }
+cursive = { version = "0.11", default-features = false, features = [ "pancurses-backend" ] }
+structopt = "0.2"
+log = "0.4"
