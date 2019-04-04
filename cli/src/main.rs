@@ -1,3 +1,6 @@
+#![deny(bare_trait_objects)]
+
+pub mod net;
 pub mod ui;
 
 use structopt::StructOpt;
