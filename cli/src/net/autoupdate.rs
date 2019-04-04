@@ -25,8 +25,10 @@ fn get_client(version: &str) -> impl Stream<Item = Chunk, Error = ReqError> {
         .flatten_stream()
 }
 
-/// Get the latest version of the game client
-pub fn get_latest_client(version: &str) -> impl Stream<Item = Chunk, Error = ReqError> {
+/// Get the latest version of the game client. This is returned as a `Stream` of
+/// `Chunk`s, so it may be useful to use `Stream.concat2()` to get the entire
+/// body.
+pub fn get_latest_client() -> impl Stream<Item = Chunk, Error = ReqError> {
     get_latest_version()
         .map(|version| get_client(&version))
         .flatten_stream()
@@ -35,6 +37,7 @@ pub fn get_latest_client(version: &str) -> impl Stream<Item = Chunk, Error = Req
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mime_sniffer::MimeTypeSniffer;
     use tokio::runtime::Runtime;
 
     #[test]
@@ -42,5 +45,15 @@ mod tests {
         let mut rt = Runtime::new().unwrap();
         let version = rt.block_on(get_latest_version()).unwrap();
         println!("Latest client version: {}", version);
+    }
+
+    #[test]
+    pub fn test_get_latest_client() {
+        let mut rt = Runtime::new().unwrap();
+        let client = rt.block_on(get_latest_client().concat2()).unwrap();
+        assert_eq!(
+            Some("application/x-shockwave-flash"),
+            client.sniff_mime_type()
+        );
     }
 }
