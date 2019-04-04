@@ -4,6 +4,7 @@ description = "A lightweight and efficient proxy for Realm of the Mad God"
 version = "0.1.0"
 authors = ["Dominic Marcuse <dominic@marcuse.us>"]
 edition = "2018"
+license = "AGPL-3.0-or-later"
 
 [dependencies]
 log = "0.4"
